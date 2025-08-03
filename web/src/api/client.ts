@@ -135,4 +135,5 @@ export class ApiClient {
 }
 
 export const api = new ApiClient(apiClient)
+export { apiClient }
 export default apiClient

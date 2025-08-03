@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import {
   Save,
   Eye,
@@ -70,7 +70,6 @@ import {
 } from '@/components/ui/alert';
 
 import Real135Editor from './Real135Editor';
-import Enhanced135Editor from './Enhanced135Editor';
 import ImageSelector from '../images/ImageSelector';
 import { articlesApi, categoriesApi, type Article, type Category, type CreateArticleRequest, type UpdateArticleRequest } from '@/api/articles';
 import { imagesApi } from '@/api/images';
@@ -78,15 +77,23 @@ import './CreateUpdateArticle.css';
 
 const articleSchema = z.object({
   title: z.string().min(1, 'Title is required').max(500, 'Title must be less than 500 characters'),
-  summary: z.string().max(1000, 'Summary must be less than 1000 characters'),
-  content: z.string().min(10, 'Content must be at least 10 characters'),
+  summary: z.string().optional(),
+  content: z.string().min(1, 'Content is required'),
   author: z.string().min(1, 'Author is required').max(100, 'Author must be less than 100 characters'),
   categoryId: z.string().min(1, 'Category is required'),
   siteImageId: z.string().optional(),
   promotionPicId: z.string().optional(),
-  frontCoverImageUrl: z.string().url().optional().or(z.literal('')),
+  frontCoverImageUrl: z.string().optional().refine((val) => {
+    if (!val || val === '') return true;
+    try {
+      new URL(val);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Must be a valid URL'),
   isPublished: z.boolean(),
-  tags: z.string().optional(),
+  tags: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
 type ArticleFormData = z.infer<typeof articleSchema>;
@@ -112,7 +119,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
   const [showStylePanel, setShowStylePanel] = useState(false);
   const [editorType, setEditorType] = useState<'enhanced' | 'real135'>('real135');
   const [showImageSelector, setShowImageSelector] = useState(false);
-  const [showPublishDialog, setShowPublishDialog] = useState(false);
+
   const [isDirty, setIsDirty] = useState(false);
 
   // Form setup
@@ -121,6 +128,8 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
     handleSubmit,
     watch,
     setValue,
+    getValues,
+    trigger,
     formState: { errors },
     reset,
   } = useForm<ArticleFormData>({
@@ -135,13 +144,25 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
       promotionPicId: '',
       frontCoverImageUrl: '',
       isPublished: false,
-      tags: '',
+      tags: [],
     },
   });
 
   const watchedContent = watch('content');
   const watchedTitle = watch('title');
   const watchedIsPublished = watch('isPublished');
+
+  // Debug watchedContent changes
+  // useEffect(() => {
+  //   console.log('watchedContent changed:', watchedContent);
+  // }, [watchedContent]);
+
+  // Debug form errors
+  React.useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      console.log('Form validation errors:', errors);
+    }
+  }, [errors]);
 
   // Fetch existing article for edit mode
   const { data: article, isLoading: articleLoading } = useQuery({
@@ -151,10 +172,17 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
   });
 
   // Fetch categories
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useQuery({
     queryKey: ['categories'],
     queryFn: categoriesApi.getCategories,
   });
+
+  // Debug categories
+  useEffect(() => {
+    console.log('Categories data:', categories);
+    console.log('Categories loading:', categoriesLoading);
+    console.log('Categories error:', categoriesError);
+  }, [categories, categoriesLoading, categoriesError]);
 
   // Create article mutation
   const createMutation = useMutation({
@@ -191,8 +219,13 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
   
   const performAutoSave = useCallback(() => {
     if (!autoSave || !isDirty || mode === 'create') return;
-    
+
     const formData = watch();
+    // Convert tags string to array
+    const tagsArray = typeof formData.tags === 'string'
+      ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+      : (formData.tags || []);
+
     updateMutation.mutate({
       title: formData.title,
       summary: formData.summary,
@@ -203,7 +236,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
       promotionPicId: formData.promotionPicId,
       frontCoverImageUrl: formData.frontCoverImageUrl,
       isPublished: formData.isPublished,
-      tags: formData.tags,
+      tags: tagsArray,
     });
   }, [autoSave, isDirty, mode, watch, updateMutation]);
 
@@ -227,6 +260,8 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
   // Load article data for edit mode
   useEffect(() => {
     if (article && mode === 'edit') {
+      // console.log('Loading article data for edit:', article);
+      // console.log('Article content:', article.content);
       reset({
         title: article.title || '',
         summary: article.summary || '',
@@ -237,8 +272,9 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
         promotionPicId: article.promotionPicId || '',
         frontCoverImageUrl: article.frontCoverImageUrl || '',
         isPublished: article.isPublished || false,
-        tags: article.tags || '',
+        tags: Array.isArray(article.tags) ? article.tags.join(', ') : (article.tags || ''),
       });
+      // console.log('Form reset with content:', article.content);
     }
   }, [article, mode, reset]);
 
@@ -258,7 +294,16 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
 
   // Handle form submission
   const onSubmit = (data: ArticleFormData) => {
+    console.log('Form submitted with data:', data);
+    console.log('Form errors:', errors);
+
+    // Convert tags string to array
+    const tagsArray = typeof data.tags === 'string'
+      ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+      : (data.tags || []);
+
     if (mode === 'create') {
+      console.log('Creating article...');
       createMutation.mutate({
         title: data.title,
         summary: data.summary,
@@ -268,10 +313,11 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
         siteImageId: data.siteImageId,
         promotionPicId: data.promotionPicId,
         frontCoverImageUrl: data.frontCoverImageUrl,
-        isPublished: data.isPublished,
-        tags: data.tags,
+        isPublished: data.isPublished || false,
+        tags: tagsArray,
       });
     } else {
+      console.log('Updating article...');
       updateMutation.mutate({
         title: data.title,
         summary: data.summary,
@@ -281,23 +327,34 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
         siteImageId: data.siteImageId,
         promotionPicId: data.promotionPicId,
         frontCoverImageUrl: data.frontCoverImageUrl,
-        isPublished: data.isPublished,
-        tags: data.tags,
+        isPublished: data.isPublished || false,
+        tags: tagsArray,
       });
     }
   };
 
-  // Handle publish
-  const handlePublish = () => {
-    setValue('isPublished', true);
-    setShowPublishDialog(false);
-    handleSubmit(onSubmit)();
-  };
 
-  // Handle save as draft
-  const handleSaveAsDraft = () => {
+
+  // Handle save
+  const handleSave = async () => {
+    console.log('Save button clicked');
+    const formData = getValues();
+    console.log('Form data:', formData);
+    console.log('Form errors:', errors);
+
+    // Set as draft
     setValue('isPublished', false);
-    handleSubmit(onSubmit)();
+
+    // Trigger form validation and submission
+    const isValid = await trigger();
+    console.log('Form is valid:', isValid);
+
+    if (isValid) {
+      handleSubmit(onSubmit)();
+    } else {
+      console.log('Form validation failed:', errors);
+      toast.error('Please fix the form errors before saving');
+    }
   };
 
   if (articleLoading) {
@@ -406,23 +463,21 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
               {/* Save Actions */}
               <div className="flex items-center space-x-2">
                 <Button
-                  variant="outline"
                   size="sm"
-                  onClick={handleSaveAsDraft}
+                  onClick={handleSave}
                   disabled={createMutation.isPending || updateMutation.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  Save Draft
+                  {createMutation.isPending || updateMutation.isPending ? 'Saving...' : 'Save'}
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setShowPublishDialog(true)}
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Publish
-                </Button>
+
+                {/* Show validation errors */}
+                {Object.keys(errors).length > 0 && (
+                  <div className="ml-4 text-sm text-red-600 bg-red-50 px-2 py-1 rounded">
+                    Validation errors: {Object.keys(errors).join(', ')}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -505,11 +560,17 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                           <SelectValue placeholder="Select category..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
+                          {Array.isArray(categories) && categories.length > 0 ? (
+                            categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id}>
+                                {category.title || category.name || 'Unnamed Category'}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-categories" disabled>
+                              No categories available
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                       {errors.categoryId && (
@@ -574,26 +635,40 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                 ) : (
                   /* Editor Mode */
                   <div className="h-full">
-                    {editorType === 'real135' ? (
-                      <Real135Editor
-                        ref={editorRef}
-                        content={watchedContent}
-                        onChange={handleContentChange}
-                        style={{ height: '100%' }}
-                        className="h-full"
-                        config={{
-                          initialFrameHeight: 600,
-                          autoHeightEnabled: false,
-                          scaleEnabled: false,
-                        }}
-                      />
+                    {/* Only render editor after article is loaded in edit mode, or immediately in create mode */}
+                    {(mode === 'create' || (mode === 'edit' && article)) ? (
+                      editorType === 'real135' ? (
+                        <Real135Editor
+                          ref={editorRef}
+                          content={watchedContent}
+                          onChange={handleContentChange}
+                          style={{ height: '100%' }}
+                          className="h-full"
+                          config={{
+                            initialFrameHeight: 600,
+                            autoHeightEnabled: false,
+                            scaleEnabled: false,
+                          }}
+                        />
+                      ) : (
+                        <Real135Editor
+                          content={watchedContent}
+                          onChange={handleContentChange}
+                          className="h-full"
+                          config={{
+                            initialFrameHeight: 600,
+                            autoHeightEnabled: false,
+                            scaleEnabled: false,
+                          }}
+                        />
+                      )
                     ) : (
-                      <Enhanced135Editor
-                        content={watchedContent}
-                        onChange={handleContentChange}
-                        placeholder="开始创作你的文章..."
-                        className="h-full"
-                      />
+                      <div className="h-full flex items-center justify-center border border-gray-300 rounded-md">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                          <p className="text-gray-600">Loading editor...</p>
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}
@@ -711,32 +786,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
         </div>
       </form>
 
-      {/* Publish Dialog */}
-      <Dialog open={showPublishDialog} onOpenChange={setShowPublishDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Publish Article</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Ready to publish?</AlertTitle>
-              <AlertDescription>
-                Once published, this article will be visible to all users. You can unpublish it later if needed.
-              </AlertDescription>
-            </Alert>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPublishDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handlePublish} className="bg-green-600 hover:bg-green-700">
-              <Send className="w-4 h-4 mr-2" />
-              Publish Now
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       {/* Image Selector Dialog */}
       {showImageSelector && (
@@ -745,14 +795,30 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
             <DialogHeader>
               <DialogTitle>Select Images</DialogTitle>
             </DialogHeader>
-            <ImageSelector
-              onSelect={(image) => {
-                setValue('siteImageId', image.id);
-                setShowImageSelector(false);
-                setIsDirty(true);
-              }}
-              onClose={() => setShowImageSelector(false)}
-            />
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Search images..."
+                  className="flex-1"
+                />
+                <Button variant="outline" size="sm">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload New
+                </Button>
+              </div>
+
+              <div className="text-center py-8 text-gray-500">
+                <ImageIcon className="h-12 w-12 mx-auto mb-2" />
+                <p>Image selector will be implemented</p>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowImageSelector(false)}
+                  className="mt-4"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}

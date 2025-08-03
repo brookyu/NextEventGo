@@ -13,7 +13,7 @@ import EventDetailPage from '@/pages/events/EventDetailPage'
 import EventFormPage from '@/pages/events/EventFormPage'
 import ArticlesPage from '@/pages/articles/ArticlesPage'
 import MobileArticleViewer from '@/components/articles/MobileArticleViewer'
-import MobileArticleEditor from '@/components/articles/MobileArticleEditor'
+import CreateUpdateArticle from '@/components/articles/CreateUpdateArticle'
 import ImagesPage from '@/pages/images/ImagesPage'
 import VideosPage from '@/pages/videos/VideosPage'
 import CloudVideosPage from '@/pages/cloud-videos/CloudVideosPage'
@@ -24,6 +24,7 @@ import UsersPage from '@/pages/users/UsersPage'
 import WeChatPage from '@/pages/wechat/WeChatPage'
 import MigrationDashboard from '@/pages/migration/MigrationDashboard'
 import SettingsPage from '@/pages/settings/SettingsPage'
+import Test135Editor from '@/components/articles/Test135Editor'
 
 function App() {
   const { isAuthenticated, isLoading } = useAuthStore()
@@ -61,9 +62,9 @@ function App() {
 
           {/* Content Management */}
           <Route path="/articles" element={<DashboardLayout><ArticlesPage /></DashboardLayout>} />
-          <Route path="/articles/create" element={<MobileArticleEditor />} />
+          <Route path="/articles/create" element={<DashboardLayout><CreateUpdateArticle mode="create" /></DashboardLayout>} />
           <Route path="/articles/:id" element={<MobileArticleViewer />} />
-          <Route path="/articles/:id/edit" element={<MobileArticleEditor />} />
+          <Route path="/articles/:id/edit" element={<DashboardLayout><CreateUpdateArticle mode="edit" /></DashboardLayout>} />
           <Route path="/images" element={<DashboardLayout><ImagesPage /></DashboardLayout>} />
           <Route path="/videos" element={<DashboardLayout><VideosPage /></DashboardLayout>} />
           <Route path="/cloud-videos" element={<DashboardLayout><CloudVideosPage /></DashboardLayout>} />
@@ -78,6 +79,7 @@ function App() {
           <Route path="/wechat" element={<DashboardLayout><WeChatPage /></DashboardLayout>} />
           <Route path="/migration" element={<DashboardLayout><MigrationDashboard /></DashboardLayout>} />
           <Route path="/settings" element={<DashboardLayout><SettingsPage /></DashboardLayout>} />
+          <Route path="/test-135editor" element={<DashboardLayout><Test135Editor /></DashboardLayout>} />
 
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

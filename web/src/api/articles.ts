@@ -28,13 +28,15 @@ export interface Article {
 
 export interface Category {
   id: string;
-  name: string;
-  description: string;
-  sortOrder: number;
-  isActive: boolean;
-  color: string;
-  icon: string;
-  createdAt: string;
+  title: string; // API returns 'title' not 'name'
+  name?: string; // Keep for backward compatibility
+  description?: string;
+  type?: number;
+  sortOrder?: number;
+  isActive?: boolean;
+  color?: string;
+  icon?: string;
+  createdAt?: string;
   updatedAt?: string;
 }
 
@@ -54,14 +56,14 @@ export interface Image {
 
 export interface CreateArticleRequest {
   title: string;
-  summary: string;
+  summary?: string;
   content: string;
   author: string;
   categoryId: string;
   siteImageId?: string;
   promotionPicId?: string;
   jumpResourceId?: string;
-  frontCoverImageUrl: string;
+  frontCoverImageUrl?: string;
   isPublished: boolean;
 }
 
@@ -162,69 +164,103 @@ export interface UpdateCategoryRequest {
 // Article API functions
 export const articlesApi = {
   // Article CRUD
-  getArticles: (params?: ArticleListParams): Promise<ArticleListResponse> =>
-    apiClient.get('/articles', { params }),
+  getArticles: async (params?: ArticleListParams): Promise<ArticleListResponse> => {
+    const response = await apiClient.get('/articles', { params });
+    return response.data?.data || response.data;
+  },
 
-  getArticle: (id: string): Promise<Article> =>
-    apiClient.get(`/articles/${id}`),
+  getArticle: async (id: string): Promise<Article> => {
+    const response = await apiClient.get(`/articles/${id}`);
+    return response.data?.data || response.data;
+  },
 
-  createArticle: (data: CreateArticleRequest): Promise<Article> =>
-    apiClient.post('/articles', data),
+  createArticle: async (data: CreateArticleRequest): Promise<Article> => {
+    const response = await apiClient.post('/articles', data);
+    return response.data?.data || response.data;
+  },
 
-  updateArticle: (id: string, data: UpdateArticleRequest): Promise<Article> =>
-    apiClient.put(`/articles/${id}`, data),
+  updateArticle: async (id: string, data: UpdateArticleRequest): Promise<Article> => {
+    const response = await apiClient.put(`/articles/${id}`, data);
+    return response.data?.data || response.data;
+  },
 
-  deleteArticle: (id: string): Promise<void> =>
-    apiClient.delete(`/articles/${id}`),
+  deleteArticle: async (id: string): Promise<void> => {
+    await apiClient.delete(`/articles/${id}`);
+  },
 
   // Publishing
-  publishArticle: (id: string): Promise<Article> =>
-    apiClient.post(`/articles/${id}/publish`),
+  publishArticle: async (id: string): Promise<Article> => {
+    const response = await apiClient.post(`/articles/${id}/publish`);
+    return response.data?.data || response.data;
+  },
 
-  unpublishArticle: (id: string): Promise<Article> =>
-    apiClient.post(`/articles/${id}/unpublish`),
+  unpublishArticle: async (id: string): Promise<Article> => {
+    const response = await apiClient.post(`/articles/${id}/unpublish`);
+    return response.data?.data || response.data;
+  },
 
-  publishMultipleArticles: (articleIds: string[]): Promise<{ success: string[]; failed: string[] }> =>
-    apiClient.post('/articles/publish', { articleIds }),
+  publishMultipleArticles: async (articleIds: string[]): Promise<{ success: string[]; failed: string[] }> => {
+    const response = await apiClient.post('/articles/publish', { articleIds });
+    return response.data?.data || response.data;
+  },
 
   // Analytics
-  trackView: (id: string, data: ArticleTrackingData): Promise<void> =>
-    apiClient.post(`/articles/${id}/track/view`, data),
+  trackView: async (id: string, data: ArticleTrackingData): Promise<void> => {
+    await apiClient.post(`/articles/${id}/track/view`, data);
+  },
 
-  trackRead: (id: string, data: ArticleTrackingData): Promise<void> =>
-    apiClient.post(`/articles/${id}/track/read`, data),
+  trackRead: async (id: string, data: ArticleTrackingData): Promise<void> => {
+    await apiClient.post(`/articles/${id}/track/read`, data);
+  },
 
-  getAnalytics: (id: string, days?: number): Promise<ArticleAnalytics> =>
-    apiClient.get(`/articles/${id}/analytics`, { params: { days } }),
+  getAnalytics: async (id: string, days?: number): Promise<ArticleAnalytics> => {
+    const response = await apiClient.get(`/articles/${id}/analytics`, { params: { days } });
+    return response.data?.data || response.data;
+  },
 
   // Public access
-  getPublishedArticles: (params?: ArticleListParams): Promise<ArticleListResponse> =>
-    apiClient.get('/public/articles', { params }),
+  getPublishedArticles: async (params?: ArticleListParams): Promise<ArticleListResponse> => {
+    const response = await apiClient.get('/public/articles', { params });
+    return response.data?.data || response.data;
+  },
 
-  getPublishedArticle: (id: string): Promise<Article> =>
-    apiClient.get(`/public/articles/${id}`),
+  getPublishedArticle: async (id: string): Promise<Article> => {
+    const response = await apiClient.get(`/public/articles/${id}`);
+    return response.data?.data || response.data;
+  },
 };
 
 // Category API functions
 export const categoriesApi = {
-  getCategories: (includeStats?: boolean): Promise<Category[] | CategoryWithStats[]> =>
-    apiClient.get('/categories', { params: { includeStats } }),
+  getCategories: async (includeStats?: boolean): Promise<Category[] | CategoryWithStats[]> => {
+    const response = await apiClient.get('/categories', { params: { includeStats } });
+    return response.data?.data || [];
+  },
 
-  getCategory: (id: string): Promise<Category> =>
-    apiClient.get(`/categories/${id}`),
+  getCategory: async (id: string): Promise<Category> => {
+    const response = await apiClient.get(`/categories/${id}`);
+    return response.data?.data || response.data;
+  },
 
-  createCategory: (data: CreateCategoryRequest): Promise<Category> =>
-    apiClient.post('/categories', data),
+  createCategory: async (data: CreateCategoryRequest): Promise<Category> => {
+    const response = await apiClient.post('/categories', data);
+    return response.data?.data || response.data;
+  },
 
-  updateCategory: (id: string, data: UpdateCategoryRequest): Promise<Category> =>
-    apiClient.put(`/categories/${id}`, data),
+  updateCategory: async (id: string, data: UpdateCategoryRequest): Promise<Category> => {
+    const response = await apiClient.put(`/categories/${id}`, data);
+    return response.data?.data || response.data;
+  },
 
-  deleteCategory: (id: string): Promise<void> =>
-    apiClient.delete(`/categories/${id}`),
+  deleteCategory: async (id: string): Promise<void> => {
+    await apiClient.delete(`/categories/${id}`);
+  },
 
   // Public access
-  getActiveCategories: (): Promise<Category[]> =>
-    apiClient.get('/public/categories'),
+  getActiveCategories: async (): Promise<Category[]> => {
+    const response = await apiClient.get('/public/categories');
+    return response.data?.data || [];
+  },
 };
 
 // Utility functions

@@ -20,6 +20,9 @@ export interface Image {
   updatedAt: string
 }
 
+// Alias for compatibility
+export type SiteImage = Image
+
 export interface ImagesResponse {
   data: Image[]
   pagination: {
@@ -250,3 +253,6 @@ export const images = {
     return response.json()
   },
 }
+
+// Export as imagesApi for compatibility
+export const imagesApi = images

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Save, Eye, Upload, Image, Type, Bold, Italic, List, Link2 } from 'lucide-react'
 import { motion } from 'framer-motion'
-import Enhanced135Editor from './Enhanced135Editor'
+import Real135Editor from './Real135Editor'
 
 interface Article {
   id?: string
@@ -32,6 +32,11 @@ export default function MobileArticleEditor() {
     categoryId: '',
     tags: ''
   })
+
+  // Debug article state changes
+  useEffect(() => {
+    console.log('Article state updated:', article);
+  }, [article]);
   
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
@@ -82,8 +87,28 @@ export default function MobileArticleEditor() {
   }
 
   const handleSave = async (publish = false) => {
+    console.log('Attempting to save article:', article);
+    console.log('Title value:', article.title);
+    console.log('Title trimmed:', article.title.trim());
+    console.log('Title length:', article.title.trim().length);
+
     if (!article.title.trim()) {
-      alert('请输入文章标题')
+      alert('Please enter article title (请输入文章标题)')
+      return
+    }
+
+    if (!article.author.trim()) {
+      alert('Please enter author name (请输入作者姓名)')
+      return
+    }
+
+    if (!article.categoryId) {
+      alert('Please select a category (请选择分类)')
+      return
+    }
+
+    if (!article.content.trim()) {
+      alert('Please enter article content (请输入文章内容)')
       return
     }
 
@@ -256,13 +281,17 @@ export default function MobileArticleEditor() {
               </div>
             </div>
 
-            {/* Enhanced 135Editor */}
+            {/* Real 135Editor */}
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <Enhanced135Editor
+              <Real135Editor
                 content={article.content}
                 onChange={(content) => setArticle({ ...article, content })}
-                placeholder="开始创作您的文章..."
                 className="min-h-96"
+                config={{
+                  initialFrameHeight: 400,
+                  autoHeightEnabled: false,
+                  scaleEnabled: false,
+                }}
               />
             </div>
           </motion.div>

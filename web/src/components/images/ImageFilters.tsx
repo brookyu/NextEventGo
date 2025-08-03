@@ -24,11 +24,17 @@ export function ImageFilters({ filters, categories, onChange }: ImageFiltersProp
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Categories</SelectItem>
-          {categories.map((category) => (
-            <SelectItem key={category.id} value={category.id}>
-              {category.name}
+          {Array.isArray(categories) && categories.length > 0 ? (
+            categories.map((category) => (
+              <SelectItem key={category.id} value={category.id}>
+                {category.name}
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="no-categories" disabled>
+              No categories available
             </SelectItem>
-          ))}
+          )}
         </SelectContent>
       </Select>
     </div>
