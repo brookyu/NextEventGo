@@ -195,9 +195,31 @@ const Real135Editor = forwardRef<Real135EditorRef, Real135EditorProps>(
             console.warn('Could not wrap UEditor fireEvent:', error);
           }
 
-          // Set initial content
+          // Set initial content with better error handling
+          console.log('📝 Setting initial content:', {
+            hasContent: !!content,
+            contentLength: content?.length || 0,
+            contentPreview: content?.substring(0, 100) + (content?.length > 100 ? '...' : '')
+          });
+
           if (content) {
-            instanceRef.current.setContent(content);
+            try {
+              instanceRef.current.setContent(content);
+              console.log('✅ Initial content set successfully');
+            } catch (error) {
+              console.error('❌ Error setting initial content:', error);
+              // Retry after a short delay
+              setTimeout(() => {
+                try {
+                  instanceRef.current.setContent(content);
+                  console.log('✅ Initial content set successfully on retry');
+                } catch (retryError) {
+                  console.error('❌ Error setting initial content on retry:', retryError);
+                }
+              }, 500);
+            }
+          } else {
+            console.log('📝 No initial content to set');
           }
 
           // Set up content change listener
@@ -239,43 +261,78 @@ const Real135Editor = forwardRef<Real135EditorRef, Real135EditorProps>(
       }
     };
 
-    // Function to check if 135Editor is fully loaded
+    // Function to check if 135Editor is fully loaded with all features
     const check135EditorReady = () => {
-      return window.UE &&
-             typeof window.UE.getEditor === 'function' &&
-             window.UEDITOR_CONFIG &&
-             window.jQuery &&
-             window.$ &&
-             document.querySelector('script[src*="ueditor.all.min.js"]') &&
-             document.querySelector('script[src*="a92d301d77.js"]');
+      const hasBasicUE = window.UE && typeof window.UE.getEditor === 'function';
+      const hasConfig = !!window.UEDITOR_CONFIG;
+      const hasJQuery = !!window.jQuery && !!window.$;
+      const hasScripts = document.querySelector('script[src*="ueditor.all.min.js"]') &&
+                        document.querySelector('script[src*="a92d301d77.js"]');
+
+      // Check for 135Editor specific features
+      const has135Features = window.UE &&
+                            (window.UE.plugins && window.UE.plugins.length > 0) ||
+                            document.querySelector('script[src*="a92d301d77.js"]');
+
+      console.log('135Editor readiness check:', {
+        hasBasicUE,
+        hasConfig,
+        hasJQuery,
+        hasScripts,
+        has135Features,
+        pluginCount: window.UE?.plugins?.length || 0
+      });
+
+      return hasBasicUE && hasConfig && hasJQuery && hasScripts && has135Features;
     };
 
     // Load all required resources with retry logic
     const loadResources = async () => {
       try {
-        console.log(`Starting to load 135Editor resources... (attempt ${retryCount.current + 1}/${maxRetries})`);
+        console.log(`🔄 Starting to load 135Editor resources... (attempt ${retryCount.current + 1}/${maxRetries})`, {
+          timestamp: new Date().toISOString(),
+          retryCount: retryCount.current,
+          maxRetries
+        });
         const basePath = '/resource/135/';
+
+        // Simplified approach: Always force a complete reload
+        console.log('🧹 Cleaning up existing 135Editor resources...');
+
+        // Clean up any existing incomplete resources to ensure fresh load
+        const existingScripts = document.querySelectorAll('script[src*="/resource/135/"]');
+        const existingCSS = document.querySelectorAll('link[href*="/resource/135/"]');
+
+        console.log(`Found ${existingScripts.length} existing scripts and ${existingCSS.length} existing CSS files`);
+
+        existingScripts.forEach(script => {
+          console.log('🗑️ Removing existing 135Editor script:', script.getAttribute('src'));
+          script.remove();
+        });
+
+        existingCSS.forEach(css => {
+          console.log('🗑️ Removing existing 135Editor CSS:', css.getAttribute('href'));
+          css.remove();
+        });
 
         // Initialize globals first to prevent undefined errors
         if (typeof window !== 'undefined') {
-          // Initialize UEDITOR_CONFIG if not exists
-          if (!window.UEDITOR_CONFIG) {
-            window.UEDITOR_CONFIG = {};
-          }
+          console.log('🔧 Initializing global objects...');
+          // Reset and initialize UEDITOR_CONFIG
+          window.UEDITOR_CONFIG = {};
 
-          // Initialize UE object structure to prevent language loading errors
-          if (!window.UE) {
-            (window as any).UE = {
-              I18N: {}
-            };
-          } else if (!window.UE.I18N) {
-            window.UE.I18N = {};
-          }
+          // Reset and initialize UE object structure
+          (window as any).UE = {
+            I18N: {},
+            plugins: []
+          };
         }
 
-        // Load CSS
-        console.log('Loading CSS...');
-        await loadCSS(`${basePath}themes/96619a5672.css`);
+        // Load CSS first
+        const cssUrl = `${basePath}themes/96619a5672.css`;
+        console.log('📄 Loading CSS:', cssUrl);
+        await loadCSS(cssUrl);
+        console.log('✅ CSS loaded successfully');
 
         // Load scripts in order (same as working example)
         const scripts = [
@@ -285,15 +342,32 @@ const Real135Editor = forwardRef<Real135EditorRef, Real135EditorProps>(
           `${basePath}a92d301d77.js`
         ];
 
-        for (const script of scripts) {
-          await loadScript(script);
+        console.log('📦 Loading scripts in sequence:', scripts);
+
+        for (let i = 0; i < scripts.length; i++) {
+          const script = scripts[i];
+          console.log(`📜 Loading script ${i + 1}/${scripts.length}:`, script);
+
+          try {
+            await loadScript(script);
+            console.log(`✅ Script ${i + 1} loaded successfully:`, script);
+          } catch (error) {
+            console.error(`❌ Failed to load script ${i + 1}:`, script, error);
+            throw error;
+          }
 
           // Check specific globals after key scripts
           if (script.includes('ueditor.config.js')) {
-            console.log('UEditor config loaded, checking window.UEDITOR_CONFIG:', typeof window.UEDITOR_CONFIG);
+            console.log('🔍 UEditor config loaded, checking window.UEDITOR_CONFIG:', typeof window.UEDITOR_CONFIG);
           }
           if (script.includes('jquery')) {
-            console.log('jQuery loaded, checking window.jQuery:', typeof window.jQuery);
+            console.log('🔍 jQuery loaded, checking window.jQuery:', typeof window.jQuery);
+          }
+          if (script.includes('ueditor.all.min.js')) {
+            console.log('🔍 UEditor core loaded, checking window.UE:', typeof window.UE);
+          }
+          if (script.includes('a92d301d77.js')) {
+            console.log('🔍 135Editor extensions loaded, checking plugins:', window.UE?.plugins?.length || 0);
           }
           if (script.includes('ueditor.all.min.js')) {
             console.log('UEditor core loaded, checking window.UE:', typeof window.UE);
@@ -384,6 +458,17 @@ const Real135Editor = forwardRef<Real135EditorRef, Real135EditorProps>(
 
     // Effect to initialize the editor
     useEffect(() => {
+      console.log('🚀 Real135Editor useEffect triggered', {
+        editorRef: !!editorRef.current,
+        windowExists: typeof window !== 'undefined',
+        timestamp: new Date().toISOString()
+      });
+
+      if (!editorRef.current) {
+        console.log('❌ No editor ref, exiting useEffect');
+        return;
+      }
+
       // Suppress UEditor console warnings
       const originalConsoleWarn = console.warn;
       const originalConsoleError = console.error;
@@ -407,19 +492,36 @@ const Real135Editor = forwardRef<Real135EditorRef, Real135EditorProps>(
         originalConsoleError.apply(console, args);
       };
 
-      // Check if UE is available and ready
-      if (window.UE && typeof window.UE.getEditor === 'function') {
-        console.log('UE is available, initializing editor...');
+      // Check current state before deciding what to do
+      const currentState = {
+        hasUE: !!window.UE,
+        hasUEGetEditor: !!(window.UE && typeof window.UE.getEditor === 'function'),
+        hasConfig: !!window.UEDITOR_CONFIG,
+        hasJQuery: !!window.jQuery,
+        has$: !!window.$,
+        isReady: check135EditorReady(),
+        isInitialized: isInitialized.current
+      };
+
+      console.log('🔍 Current 135Editor state:', currentState);
+
+      // Always check for complete 135Editor readiness, not just basic UE
+      if (check135EditorReady()) {
+        console.log('✅ 135Editor is fully ready, initializing editor...');
         initEditor();
       } else {
-        console.log('UE not available, loading resources...');
+        console.log('⚠️ 135Editor not fully ready, loading all resources...', {
+          reason: 'Missing components',
+          currentState
+        });
+        // Force reload of all resources to ensure 135Editor features are available
         loadResources();
       }
 
-      // Also set up a polling mechanism similar to Simple135Editor
+      // Also set up a polling mechanism to check for complete 135Editor readiness
       const checkInterval = setInterval(() => {
-        if (window.UE && typeof window.UE.getEditor === 'function' && !isInitialized.current) {
-          console.log('UE became available, initializing editor...');
+        if (check135EditorReady() && !isInitialized.current) {
+          console.log('135Editor became fully ready, initializing editor...');
           clearInterval(checkInterval);
           initEditor();
         }
@@ -460,18 +562,40 @@ const Real135Editor = forwardRef<Real135EditorRef, Real135EditorProps>(
 
     // Effect to update content when prop changes
     useEffect(() => {
+      console.log('🔄 Content prop changed:', {
+        contentLength: content?.length || 0,
+        hasInstance: !!instanceRef.current,
+        isReady: instanceRef.current?.isReady?.() || false
+      });
+
       let retryCount = 0;
       const maxRetries = 50; // Max 5 seconds of retrying
 
       const updateContent = () => {
-        if (instanceRef.current && instanceRef.current.ready) {
-          const currentContent = instanceRef.current.getContent();
-          if (currentContent !== content) {
-            instanceRef.current.setContent(content || '');
+        if (instanceRef.current && typeof instanceRef.current.isReady === 'function' && instanceRef.current.isReady()) {
+          try {
+            const currentContent = instanceRef.current.getContent();
+            console.log('📝 Updating editor content:', {
+              currentLength: currentContent?.length || 0,
+              newLength: content?.length || 0,
+              contentPreview: content?.substring(0, 100) + (content?.length > 100 ? '...' : '')
+            });
+
+            if (currentContent !== content) {
+              instanceRef.current.setContent(content || '');
+              console.log('✅ Content updated successfully');
+            } else {
+              console.log('📝 Content already matches, no update needed');
+            }
+          } catch (error) {
+            console.error('❌ Error updating content:', error);
           }
         } else if (retryCount < maxRetries) {
           retryCount++;
+          console.log(`⏳ Editor not ready, retrying... (${retryCount}/${maxRetries})`);
           setTimeout(updateContent, 100);
+        } else {
+          console.warn('⚠️ Max retries reached, could not update content');
         }
       };
 

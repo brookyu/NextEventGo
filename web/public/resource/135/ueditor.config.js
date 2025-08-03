@@ -424,9 +424,9 @@
         sourceEditor: "codemirror",
         //如果sourceEditor是codemirror，还用配置一下两个参数
         //codeMirrorJsUrl js加载的路径，默认是 URL + "third-party/codemirror/codemirror.js"
-        //,codeMirrorJsUrl: "./third-party/codemirror/codemirror.js"
+        codeMirrorJsUrl: URL + "third-party/codemirror/codemirror.js",
         //codeMirrorCssUrl css加载的路径，默认是 URL + "third-party/codemirror/codemirror.css"
-        //,codeMirrorCssUrl: "./third-party/codemirror/codemirror.css"
+        codeMirrorCssUrl: URL + "third-party/codemirror/codemirror.css",
         //编辑器初始化完成后是否进入源码模式，默认为否。
         //,sourceEditorFirst:false
         //,editorCssUrl:"./ueditor/themes/default/css/ueditor.min.css"
