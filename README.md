@@ -1,309 +1,326 @@
-# NextEvent Go API v2.0
+# NextEvent Go - WeChat Event Management System
 
-[![CI/CD Pipeline](https://github.com/zenteam/nextevent-go/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/zenteam/nextevent-go/actions/workflows/ci-cd.yml)
-[![codecov](https://codecov.io/gh/zenteam/nextevent-go/branch/main/graph/badge.svg)](https://codecov.io/gh/zenteam/nextevent-go)
-[![Go Report Card](https://goreportcard.com/badge/github.com/zenteam/nextevent-go)](https://goreportcard.com/report/github.com/zenteam/nextevent-go)
-[![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
+[![GitHub](https://img.shields.io/github/license/brookyu/NextEventGo)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/brookyu/NextEventGo)](https://goreportcard.com/report/github.com/brookyu/NextEventGo)
+[![GitHub release](https://img.shields.io/github/v/release/brookyu/NextEventGo)](https://github.com/brookyu/NextEventGo/releases)
 
-A high-performance, scalable Go-based API for the NextEvent platform, providing comprehensive event management, content publishing, and video streaming capabilities.
+A comprehensive event management system built with Go backend and React frontend, designed for WeChat integration and modern web applications.
 
 ## 🚀 Features
 
 ### Core Functionality
-- **📸 Image Management**: Advanced image processing, optimization, and CDN integration
-- **📝 Content Management**: Rich article creation, editing, and publishing workflows
-- **📰 News Publishing**: Multi-article news publications with WeChat integration
-- **🎥 Video Streaming**: Live streaming, on-demand video, and real-time analytics
-- **📊 Analytics**: Comprehensive engagement tracking and performance metrics
+- **Event Management**: Create, manage, and track events with attendee registration
+- **Image Management**: Upload, categorize, and manage images with advanced filtering
+- **Article System**: Rich text editor with WeChat publishing capabilities
+- **Video Management**: Handle both local and cloud-based video content
+- **News Management**: Create and distribute news content
+- **Survey System**: Interactive surveys with real-time analytics
+- **User Management**: Role-based access control and authentication
 
-### Technical Excellence
-- **🔒 Enterprise Security**: Rate limiting, CORS, security headers, and authentication
-- **⚡ High Performance**: Redis caching, connection pooling, and optimized queries
-- **📈 Monitoring**: Prometheus metrics, health checks, and observability
-- **🧪 Quality Assurance**: Comprehensive testing framework and CI/CD pipeline
-- **☸️ Cloud Native**: Kubernetes-ready with Docker containerization
+### Technical Features
+- **Clean Architecture**: Domain-driven design with clear separation of concerns
+- **Database Integration**: MySQL with GORM for robust data persistence
+- **File Upload**: Secure file handling with multiple storage options
+- **API Versioning**: Both v1 and v2 APIs for backward compatibility
+- **Real-time Features**: WebSocket support for live updates
+- **WeChat Integration**: Native WeChat API integration for seamless publishing
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    NextEvent Go API v2.0                   │
-├─────────────────────────────────────────────────────────────┤
-│  Presentation Layer (HTTP/REST API)                        │
-│  ├── Gin Web Framework                                     │
-│  ├── Security Middleware                                   │
-│  ├── Request/Response Validation                           │
-│  └── OpenAPI Documentation                                 │
-├─────────────────────────────────────────────────────────────┤
-│  Application Layer (Business Logic)                        │
-│  ├── Image Management Service                              │
-│  ├── Article Management Service                            │
-│  ├── News Publishing Service                               │
-│  ├── Video Management Service                              │
-│  └── Cloud Streaming Service                               │
-├─────────────────────────────────────────────────────────────┤
-│  Domain Layer (Core Business Rules)                        │
-│  ├── Entities (Image, Article, News, Video)               │
-│  ├── Repository Interfaces                                 │
-│  ├── Domain Services                                       │
-│  └── Business Rules & Validation                           │
-├─────────────────────────────────────────────────────────────┤
-│  Infrastructure Layer (External Concerns)                  │
-│  ├── GORM Database Access                                  │
-│  ├── Redis Caching                                         │
-│  ├── File Storage (Local/Cloud)                            │
-│  ├── WeChat API Integration                                │
-│  └── Cloud Streaming Services                              │
-└─────────────────────────────────────────────────────────────┘
+├── cmd/                    # Application entry points
+├── internal/
+│   ├── domain/            # Business logic and entities
+│   ├── application/       # Use cases and services
+│   ├── infrastructure/    # External concerns (DB, cache, etc.)
+│   └── interfaces/        # Controllers and routes
+├── web/                   # React frontend
+├── docs/                  # Documentation
+└── deployments/          # Docker and Kubernetes configs
 ```
 
 ## 🛠️ Technology Stack
 
-- **Language**: Go 1.21+
-- **Web Framework**: Gin
-- **Database**: PostgreSQL with GORM ORM
-- **Cache**: Redis
-- **Monitoring**: Prometheus + Grafana
-- **Containerization**: Docker + Kubernetes
-- **CI/CD**: GitHub Actions
-- **Documentation**: OpenAPI 3.0
+### Backend
+- **Go 1.21+** - Core language
+- **Gin** - HTTP web framework
+- **GORM** - ORM for database operations
+- **MySQL** - Primary database
+- **Redis** - Caching and sessions (optional)
+- **Viper** - Configuration management
 
-## 📋 Prerequisites
-
-- Go 1.21 or higher
-- PostgreSQL 15+
-- Redis 7+
-- Docker & Docker Compose (for development)
-- Kubernetes (for production deployment)
+### Frontend
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool
+- **Tailwind CSS** - Styling
+- **Shadcn/ui** - UI components
 
 ## 🚀 Quick Start
 
-### Development Setup
+### Prerequisites
+- Go 1.21 or higher
+- Node.js 18 or higher
+- MySQL 8.0 or higher
+- Redis (optional)
+
+### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/zenteam/nextevent-go.git
-   cd nextevent-go
+   git clone https://github.com/brookyu/NextEventGo.git
+   cd NextEventGo
    ```
 
-2. **Start dependencies with Docker Compose**
+2. **Set up environment variables**
    ```bash
-   cd deployments/docker
-   docker-compose up -d postgres redis
+   cp .env.example .env
+   # Edit .env with your database credentials
    ```
 
 3. **Install dependencies**
    ```bash
+   # Backend dependencies
    go mod download
+   
+   # Frontend dependencies
+   cd web && npm install && cd ..
    ```
 
-4. **Set environment variables**
+4. **Start the development servers**
    ```bash
-   export DB_HOST=localhost
-   export DB_PORT=5432
-   export DB_NAME=nextevent
-   export DB_USER=nextevent
-   export DB_PASSWORD=nextevent123
-   export REDIS_HOST=localhost
-   export REDIS_PORT=6379
+   # Start both backend and frontend
+   ./start-dev-services.sh
    ```
 
-5. **Run database migrations**
+   Or start them separately:
    ```bash
-   go run cmd/migrate/main.go
-   ```
-
-6. **Start the application**
-   ```bash
+   # Backend only
    go run cmd/api/main.go
+   
+   # Frontend only (in another terminal)
+   cd web && npm run dev
    ```
 
-The API will be available at `http://localhost:8080`
-
-### Docker Development
-
-```bash
-cd deployments/docker
-docker-compose up
-```
-
-This starts the complete development environment including:
-- NextEvent API
-- PostgreSQL database
-- Redis cache
-- Prometheus monitoring
-- Grafana dashboards
-- MinIO object storage
+### Access the Application
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8080
+- **Health Check**: http://localhost:8080/health
 
 ## 📚 API Documentation
 
-### Interactive Documentation
-- **Swagger UI**: `http://localhost:8080/swagger/`
-- **OpenAPI Spec**: `http://localhost:8080/api/openapi.json`
+### Core Endpoints
 
-### Key Endpoints
-
-#### Image Management
-```
-GET    /api/v2/images           # List images
-POST   /api/v2/images           # Upload image
-GET    /api/v2/images/{id}      # Get image
-PUT    /api/v2/images/{id}      # Update image
-DELETE /api/v2/images/{id}      # Delete image
-```
-
-#### Article Management
-```
-GET    /api/v2/articles         # List articles
-POST   /api/v2/articles         # Create article
-GET    /api/v2/articles/{id}    # Get article
-PUT    /api/v2/articles/{id}    # Update article
-DELETE /api/v2/articles/{id}    # Delete article
-```
-
-#### News Publishing
-```
-GET    /api/v2/news             # List news
-POST   /api/v2/news             # Create news
-GET    /api/v2/news/{id}        # Get news
-PUT    /api/v2/news/{id}        # Update news
-POST   /api/v2/news/{id}/publish # Publish news
-```
-
-#### Video Management
-```
-GET    /api/v2/videos           # List videos
-POST   /api/v2/videos           # Create video
-GET    /api/v2/videos/{id}      # Get video
-POST   /api/v2/videos/{id}/start # Start live stream
-POST   /api/v2/videos/{id}/stop  # Stop live stream
-```
-
-### Authentication
-
-The API supports multiple authentication methods:
-
-1. **API Key Authentication**
-   ```bash
-   curl -H "X-API-Key: your-api-key" http://localhost:8080/api/v2/images
-   ```
-
-2. **Bearer Token Authentication**
-   ```bash
-   curl -H "Authorization: Bearer your-jwt-token" http://localhost:8080/api/v2/images
-   ```
-
-## 🧪 Testing
-
-### Run Tests
+#### Images API
 ```bash
-# Run all tests
-go test ./...
-
-# Run tests with coverage
-go test -cover ./...
-
-# Run tests with race detection
-go test -race ./...
-
-# Run specific test package
-go test ./internal/application/services/...
+GET    /api/v1/images              # List images
+POST   /api/v1/images/upload       # Upload image
+DELETE /api/v1/images/:id          # Delete image
+GET    /api/v1/image-categories    # List categories
 ```
 
-### Test Categories
-- **Unit Tests**: Individual component testing
-- **Integration Tests**: Database and external service integration
-- **HTTP Tests**: API endpoint testing
-- **Performance Tests**: Load and stress testing
-
-## 📊 Monitoring & Observability
-
-### Health Checks
-- **Health**: `GET /health` - Overall system health
-- **Readiness**: `GET /ready` - Kubernetes readiness probe
-- **Liveness**: `GET /live` - Kubernetes liveness probe
-
-### Metrics
-- **Prometheus**: `GET /metrics` - Application metrics
-- **Grafana**: Pre-configured dashboards for monitoring
-
-### Logging
-- **Structured Logging**: JSON format with correlation IDs
-- **Log Levels**: Debug, Info, Warn, Error
-- **Request Tracing**: Full request lifecycle tracking
-
-## 🚀 Deployment
-
-### Docker Deployment
+#### Articles API
 ```bash
-# Build image
-docker build -f deployments/docker/Dockerfile -t nextevent-api:latest .
-
-# Run container
-docker run -p 8080:8080 nextevent-api:latest
+GET    /api/v1/content/articles    # List articles
+GET    /api/v1/content/articles/:id # Get article
+POST   /api/v1/content/articles    # Create article
+PUT    /api/v1/content/articles/:id # Update article
+DELETE /api/v1/content/articles/:id # Delete article
 ```
 
-### Kubernetes Deployment
+#### Events API
 ```bash
-# Apply all manifests
-kubectl apply -f deployments/k8s/
-
-# Check deployment status
-kubectl get pods -n nextevent
-kubectl logs -f deployment/nextevent-api -n nextevent
+GET    /api/v1/events              # List events
+GET    /api/v1/events/current      # Get current event
+POST   /api/v1/events              # Create event
+PUT    /api/v1/events/:id          # Update event
+DELETE /api/v1/events/:id          # Delete event
 ```
 
-### Production Considerations
-- Use external PostgreSQL and Redis services
-- Configure proper resource limits and requests
-- Set up horizontal pod autoscaling
-- Configure ingress with SSL termination
-- Set up monitoring and alerting
+#### Authentication
+```bash
+POST   /api/v1/auth/login          # User login
+POST   /api/v1/auth/logout         # User logout
+GET    /api/v1/auth/me             # Get current user
+```
+
+### API v2 (Enhanced)
+All v1 endpoints are also available under `/api/v2/` with enhanced features and improved response formats.
 
 ## 🔧 Configuration
 
 ### Environment Variables
+```bash
+# Database
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=NextEventDB6
+DB_USER=your_username
+DB_PASSWORD=your_password
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ENV` | Environment (development/staging/production) | `development` |
-| `LOG_LEVEL` | Logging level (debug/info/warn/error) | `info` |
-| `SERVER_PORT` | HTTP server port | `8080` |
-| `DB_HOST` | Database host | `localhost` |
-| `DB_PORT` | Database port | `5432` |
-| `DB_NAME` | Database name | `nextevent` |
-| `REDIS_HOST` | Redis host | `localhost` |
-| `REDIS_PORT` | Redis port | `6379` |
+# Redis (optional)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
 
-### Configuration Files
-- `configs/config.yaml` - Main application configuration
-- `configs/database.yaml` - Database configuration
-- `configs/cache.yaml` - Cache configuration
+# Server
+PORT=8080
+GIN_MODE=debug
+
+# WeChat (optional)
+WECHAT_APP_ID=your_app_id
+WECHAT_APP_SECRET=your_app_secret
+```
+
+### Database Setup
+```sql
+CREATE DATABASE NextEventDB6 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+## 🐳 Docker Deployment
+
+### Using Docker Compose
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+### Manual Docker Build
+```bash
+# Build backend
+docker build -f deployments/docker/Dockerfile -t nextevent-api .
+
+# Run with environment variables
+docker run -p 8080:8080 --env-file .env nextevent-api
+```
+
+## 🚀 Production Deployment
+
+### Using Kubernetes
+```bash
+# Apply configurations
+kubectl apply -f deployments/kubernetes/
+
+# Check status
+kubectl get pods -n nextevent
+```
+
+## 🧪 Testing
+
+### Backend Tests
+```bash
+# Run all tests
+go test ./...
+
+# Run with coverage
+go test -cover ./...
+
+# Run specific package
+go test ./internal/domain/entities
+```
+
+### Frontend Tests
+```bash
+cd web
+npm test
+```
+
+### API Testing
+```bash
+# Test image upload
+curl -X POST http://localhost:8080/api/v1/images/upload \
+  -F "image=@test-image.png" -F "category=test"
+
+# Test authentication
+curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
+## 📊 Monitoring and Observability
+
+### Health Checks
+- **Application Health**: `GET /health`
+- **Database Health**: Included in health endpoint
+- **Redis Health**: Included in health endpoint (if configured)
+
+### Metrics
+- Prometheus metrics available at `/metrics`
+- Custom business metrics for events, uploads, and user activity
+
+### Logging
+- Structured logging with configurable levels
+- Request/response logging with correlation IDs
+- Error tracking and alerting
+
+## 🔒 Security
+
+### Authentication & Authorization
+- JWT-based authentication
+- Role-based access control (RBAC)
+- Session management with Redis
+
+### Data Protection
+- Input validation and sanitization
+- SQL injection prevention with GORM
+- XSS protection with proper escaping
+- CORS configuration for cross-origin requests
+
+### File Upload Security
+- File type validation
+- Size limits
+- Virus scanning (configurable)
+- Secure file storage
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
 5. Open a Pull Request
 
 ### Development Guidelines
-- Follow Go best practices and idioms
-- Write comprehensive tests for new features
+- Follow Go best practices and conventions
+- Write tests for new features
 - Update documentation for API changes
-- Ensure all CI checks pass
+- Use conventional commit messages
 
-## 📄 License
+## 📝 License
 
-This project is proprietary software. All rights reserved.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
-- **Documentation**: [API Docs](https://api.nextevent.com/docs)
-- **Issues**: [GitHub Issues](https://github.com/zenteam/nextevent-go/issues)
-- **Email**: dev@nextevent.com
+### Documentation
+- [API Documentation](docs/api/)
+- [Deployment Guide](docs/deployment-guide.md)
+- [Architecture Overview](docs/architecture.md)
+- [Troubleshooting Guide](docs/troubleshooting-guide.md)
+
+### Getting Help
+- Create an issue for bug reports
+- Use discussions for questions and feature requests
+- Check existing documentation before asking
+
+## 📈 Project Status
+
+- ✅ **Core APIs**: Fully implemented and tested
+- ✅ **Frontend Interface**: Complete admin dashboard
+- ✅ **Database Integration**: MySQL with comprehensive schema
+- ✅ **File Upload System**: Working with local storage
+- ✅ **Authentication**: JWT-based auth system
+- ✅ **Docker Support**: Complete containerization
+- 🚧 **WeChat Integration**: Basic implementation (needs API keys)
+- 🚧 **Advanced Analytics**: In development
+- 📋 **Mobile App**: Planned for future release
 
 ---
 
-**NextEvent Go API v2.0** - Built with ❤️ by the NextEvent Team
+**Built with ❤️ by the NextEvent Team**
