@@ -126,6 +126,9 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	// Backward compatibility: serve old MediaFiles/1/ path from uploads/images
 	router.Static("/MediaFiles/1", "./uploads/images")
 
+	// Static file server for 135Editor resources
+	router.Static("/resource", "./web/public/resource")
+
 	// Root endpoint
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{

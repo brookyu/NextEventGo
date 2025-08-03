@@ -1,18 +1,29 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Video, Play, Calendar, User, Search, Filter, Plus } from 'lucide-react'
+import { Video, Play, Calendar, User, Search, Filter, Plus, Share2, Copy, Eye } from 'lucide-react'
+import VideoModal from '../../components/video/VideoModal'
+import { toast } from 'sonner'
 
 interface VideoItem {
   id: string
   title: string
   description?: string
   url?: string
+  playbackUrl?: string
+  cloudUrl?: string
   thumbnail?: string
-  duration?: string
+  thumbnailUrl?: string
+  coverImage?: string
+  promoImage?: string
+  duration?: string | number
   created_at?: string
   updated_at?: string
   author?: string
   views?: number
+  videoType?: string
+  quality?: string
+  isOpen?: boolean
+  status?: string
 }
 
 export default function VideosPage() {
@@ -20,6 +31,8 @@ export default function VideosPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
 
   useEffect(() => {
     fetchVideos()
@@ -45,6 +58,85 @@ export default function VideosPage() {
     video.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     video.description?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const openVideoModal = (video: VideoItem) => {
+    setSelectedVideo(video)
+    setIsVideoModalOpen(true)
+  }
+
+  const closeVideoModal = () => {
+    setSelectedVideo(null)
+    setIsVideoModalOpen(false)
+  }
+
+  const copyVideoUrl = async (video: VideoItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    const videoUrl = `${window.location.origin}/videos/${video.id}`
+
+    try {
+      await navigator.clipboard.writeText(videoUrl)
+      toast.success('Video URL copied to clipboard!')
+    } catch (error) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = videoUrl
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      toast.success('Video URL copied to clipboard!')
+    }
+  }
+
+  const shareVideo = async (video: VideoItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    const shareData = {
+      title: video.title,
+      text: video.description || video.title,
+      url: `${window.location.origin}/videos/${video.id}`
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        // Fallback to copying URL
+        await copyVideoUrl(video, e)
+      }
+    } catch (error) {
+      console.error('Error sharing:', error)
+      // Fallback to copying URL
+      await copyVideoUrl(video, e)
+    }
+  }
+
+  const formatDuration = (duration: string | number | undefined) => {
+    if (!duration) return null
+
+    const seconds = typeof duration === 'string' ? parseInt(duration) : duration
+    if (isNaN(seconds)) return null
+
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+
+  const formatViews = (views?: number) => {
+    if (!views) return '0'
+
+    if (views >= 1000000) {
+      return `${(views / 1000000).toFixed(1)}M`
+    } else if (views >= 1000) {
+      return `${(views / 1000).toFixed(1)}K`
+    }
+    return views.toString()
+  }
+
+  const getBestThumbnail = (video: VideoItem) => {
+    return video.thumbnailUrl || video.coverImage || video.promoImage || video.thumbnail
+  }
 
   if (loading) {
     return (
@@ -182,38 +274,110 @@ export default function VideosPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+              className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
+              onClick={() => openVideoModal(video)}
             >
-              <div className="aspect-video bg-gray-100 flex items-center justify-center">
-                {video.thumbnail ? (
-                  <img
-                    src={video.thumbnail}
-                    alt={video.title}
-                    className="w-full h-full object-cover"
-                  />
+              {/* Video Thumbnail */}
+              <div className="relative aspect-video bg-gray-100 overflow-hidden">
+                {getBestThumbnail(video) ? (
+                  <>
+                    <img
+                      src={getBestThumbnail(video)}
+                      alt={video.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                    />
+                    {/* Play Overlay */}
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
+                      <div className="bg-white bg-opacity-90 rounded-full p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <Play className="w-6 h-6 text-gray-800 ml-0.5" />
+                      </div>
+                    </div>
+                  </>
                 ) : (
-                  <Play className="w-12 h-12 text-gray-400" />
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+                    <Play className="w-12 h-12 text-gray-400" />
+                  </div>
+                )}
+
+                {/* Duration Badge */}
+                {formatDuration(video.duration) && (
+                  <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
+                    {formatDuration(video.duration)}
+                  </div>
+                )}
+
+                {/* Status Badge */}
+                {video.status && (
+                  <div className="absolute top-2 left-2">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      video.isOpen
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {video.isOpen ? 'Public' : 'Private'}
+                    </span>
+                  </div>
                 )}
               </div>
+
+              {/* Video Info */}
               <div className="p-4">
-                <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
+                <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
                   {video.title || 'Untitled Video'}
                 </h3>
+
                 {video.description && (
                   <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                     {video.description}
                   </p>
                 )}
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center">
-                    <User className="w-3 h-3 mr-1" />
-                    {video.author || 'Unknown'}
+
+                {/* Video Metadata */}
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
+                  <div className="flex items-center space-x-3">
+                    {video.author && (
+                      <div className="flex items-center">
+                        <User className="w-3 h-3 mr-1" />
+                        <span>{video.author}</span>
+                      </div>
+                    )}
+                    {video.views !== undefined && (
+                      <div className="flex items-center">
+                        <Eye className="w-3 h-3 mr-1" />
+                        <span>{formatViews(video.views)}</span>
+                      </div>
+                    )}
                   </div>
-                  {video.duration && (
-                    <div className="flex items-center">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {video.duration}
-                    </div>
+                  {video.quality && (
+                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium uppercase">
+                      {video.quality}
+                    </span>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={(e) => shareVideo(video, e)}
+                      className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      <span className="text-xs">Share</span>
+                    </button>
+                    <button
+                      onClick={(e) => copyVideoUrl(video, e)}
+                      className="flex items-center space-x-1 text-gray-500 hover:text-green-600 transition-colors"
+                    >
+                      <Copy className="w-4 h-4" />
+                      <span className="text-xs">Copy</span>
+                    </button>
+                  </div>
+
+                  {video.created_at && (
+                    <span className="text-xs text-gray-400">
+                      {new Date(video.created_at).toLocaleDateString()}
+                    </span>
                   )}
                 </div>
               </div>
@@ -221,6 +385,13 @@ export default function VideosPage() {
           ))}
         </div>
       )}
+
+      {/* Video Modal */}
+      <VideoModal
+        video={selectedVideo}
+        isOpen={isVideoModalOpen}
+        onClose={closeVideoModal}
+      />
     </div>
   )
 }

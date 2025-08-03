@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/zenteam/nextevent-go/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -362,6 +363,16 @@ func (h *APIHandlers) GetArticles(c *gin.Context) {
 	// Map database fields to frontend expected fields
 	articles := make([]map[string]interface{}, len(rawArticles))
 	for i, rawArticle := range rawArticles {
+		// Convert tags from comma-separated string to array
+		var tags []string
+		if tagsStr, ok := rawArticle["Tags"].(string); ok && tagsStr != "" {
+			tags = strings.Split(tagsStr, ",")
+			// Trim whitespace from each tag
+			for j, tag := range tags {
+				tags[j] = strings.TrimSpace(tag)
+			}
+		}
+
 		articles[i] = map[string]interface{}{
 			"id":           rawArticle["Id"],
 			"title":        rawArticle["Title"],
@@ -373,9 +384,8 @@ func (h *APIHandlers) GetArticles(c *gin.Context) {
 			"published_at": rawArticle["PublishedAt"],
 			"status":       rawArticle["Status"],
 			"category":     rawArticle["Category"],
-			"tags":         rawArticle["Tags"],
+			"tags":         tags,
 			"categoryId":   rawArticle["CategoryId"],
-			"isPublished":  rawArticle["IsPublished"],
 			"viewCount":    rawArticle["ViewCount"],
 			"readCount":    rawArticle["ReadCount"],
 		}
@@ -411,6 +421,16 @@ func (h *APIHandlers) GetArticle(c *gin.Context) {
 
 	rawArticle := rawArticles[0]
 
+	// Convert tags from comma-separated string to array
+	var tags []string
+	if tagsStr, ok := rawArticle["Tags"].(string); ok && tagsStr != "" {
+		tags = strings.Split(tagsStr, ",")
+		// Trim whitespace from each tag
+		for i, tag := range tags {
+			tags[i] = strings.TrimSpace(tag)
+		}
+	}
+
 	// Map database fields to frontend expected fields
 	article := map[string]interface{}{
 		"id":           rawArticle["Id"],
@@ -423,14 +443,17 @@ func (h *APIHandlers) GetArticle(c *gin.Context) {
 		"published_at": rawArticle["PublishedAt"],
 		"status":       rawArticle["Status"],
 		"category":     rawArticle["Category"],
-		"tags":         rawArticle["Tags"],
+		"tags":         tags,
 		"categoryId":   rawArticle["CategoryId"],
-		"isPublished":  rawArticle["IsPublished"],
 		"viewCount":    rawArticle["ViewCount"],
 		"readCount":    rawArticle["ReadCount"],
 	}
 
-	c.JSON(200, article)
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "Article retrieved successfully",
+		"data":    article,
+	})
 }
 
 // CreateArticle creates a new article
@@ -450,6 +473,22 @@ func (h *APIHandlers) CreateArticle(c *gin.Context) {
 	articleId := uuid.New().String()
 	now := time.Now()
 
+	// Process tags - convert array to comma-separated string
+	var tagsStr string
+	if tags, ok := articleData["tags"]; ok && tags != nil {
+		if tagArray, ok := tags.([]interface{}); ok {
+			var tagStrings []string
+			for _, tag := range tagArray {
+				if tagStr, ok := tag.(string); ok && tagStr != "" {
+					tagStrings = append(tagStrings, tagStr)
+				}
+			}
+			tagsStr = strings.Join(tagStrings, ",")
+		} else if tagString, ok := tags.(string); ok {
+			tagsStr = tagString
+		}
+	}
+
 	// Prepare article data for database
 	dbArticle := map[string]interface{}{
 		"Id":                   articleId,
@@ -458,7 +497,7 @@ func (h *APIHandlers) CreateArticle(c *gin.Context) {
 		"Summary":              articleData["summary"],
 		"Author":               articleData["author"],
 		"CategoryId":           articleData["categoryId"],
-		"Tags":                 articleData["tags"],
+		"Tags":                 tagsStr,
 		"ReadCount":            0,
 		"AuthorizeType":        0, // Default authorization type
 		"CreationTime":         now,
@@ -473,6 +512,16 @@ func (h *APIHandlers) CreateArticle(c *gin.Context) {
 		return
 	}
 
+	// Convert tags back to array for response
+	var tags []string
+	if tagsStr != "" {
+		tags = strings.Split(tagsStr, ",")
+		// Trim whitespace from each tag
+		for i, tag := range tags {
+			tags[i] = strings.TrimSpace(tag)
+		}
+	}
+
 	// Return created article
 	article := map[string]interface{}{
 		"id":         articleId,
@@ -481,12 +530,16 @@ func (h *APIHandlers) CreateArticle(c *gin.Context) {
 		"summary":    articleData["summary"],
 		"author":     articleData["author"],
 		"categoryId": articleData["categoryId"],
-		"tags":       articleData["tags"],
+		"tags":       tags,
 		"created_at": now,
 		"updated_at": now,
 	}
 
-	c.JSON(201, article)
+	c.JSON(201, gin.H{
+		"success": true,
+		"message": "Article created successfully",
+		"data":    article,
+	})
 }
 
 // UpdateArticle updates an existing article
@@ -504,14 +557,23 @@ func (h *APIHandlers) UpdateArticle(c *gin.Context) {
 	}
 
 	// Check if article exists
-	var existingArticle map[string]interface{}
-	result := h.db.Table("SiteArticles").Where("Id = ? AND IsDeleted = 0", articleId).First(&existingArticle)
+	var existingArticles []map[string]interface{}
+	result := h.db.Table("SiteArticles").Where("Id = ? AND IsDeleted = 0", articleId).Find(&existingArticles)
 	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			c.JSON(404, gin.H{"error": "Article not found"})
-		} else {
-			c.JSON(500, gin.H{"error": result.Error.Error()})
-		}
+		c.JSON(500, utils.StandardResponse{
+			Success: false,
+			Message: "Database error",
+			Data:    nil,
+		})
+		return
+	}
+
+	if len(existingArticles) == 0 {
+		c.JSON(404, utils.StandardResponse{
+			Success: false,
+			Message: "Article not found",
+			Data:    nil,
+		})
 		return
 	}
 
@@ -537,14 +599,28 @@ func (h *APIHandlers) UpdateArticle(c *gin.Context) {
 		updateData["CategoryId"] = categoryId
 	}
 	if tags, ok := articleData["tags"]; ok {
-		updateData["Tags"] = tags
-	}
-	if isPublished, ok := articleData["isPublished"]; ok {
-		updateData["IsPublished"] = isPublished
-		if isPublished == true {
-			updateData["PublishedAt"] = time.Now()
+		// Process tags - convert array to comma-separated string
+		var tagsStr string
+		if tagArray, ok := tags.([]interface{}); ok {
+			var tagStrings []string
+			for _, tag := range tagArray {
+				if tagStr, ok := tag.(string); ok && tagStr != "" {
+					tagStrings = append(tagStrings, tagStr)
+				}
+			}
+			tagsStr = strings.Join(tagStrings, ",")
+		} else if tagString, ok := tags.(string); ok {
+			tagsStr = tagString
 		}
+		updateData["Tags"] = tagsStr
 	}
+	// Note: IsPublished column doesn't exist in SiteArticles table
+	// if isPublished, ok := articleData["isPublished"]; ok {
+	//     updateData["IsPublished"] = isPublished
+	//     if isPublished == true {
+	//         updateData["PublishedAt"] = time.Now()
+	//     }
+	// }
 
 	// Update in database
 	result = h.db.Table("SiteArticles").Where("Id = ?", articleId).Updates(updateData)
@@ -554,8 +630,29 @@ func (h *APIHandlers) UpdateArticle(c *gin.Context) {
 	}
 
 	// Get updated article
-	var updatedArticle map[string]interface{}
-	h.db.Table("SiteArticles").Where("Id = ?", articleId).First(&updatedArticle)
+	var updatedArticles []map[string]interface{}
+	h.db.Table("SiteArticles").Where("Id = ?", articleId).Find(&updatedArticles)
+
+	if len(updatedArticles) == 0 {
+		c.JSON(404, utils.StandardResponse{
+			Success: false,
+			Message: "Article not found after update",
+			Data:    nil,
+		})
+		return
+	}
+
+	updatedArticle := updatedArticles[0]
+
+	// Convert tags from comma-separated string to array
+	var tags []string
+	if tagsStr, ok := updatedArticle["Tags"].(string); ok && tagsStr != "" {
+		tags = strings.Split(tagsStr, ",")
+		// Trim whitespace from each tag
+		for i, tag := range tags {
+			tags[i] = strings.TrimSpace(tag)
+		}
+	}
 
 	// Map to frontend format
 	article := map[string]interface{}{
@@ -565,8 +662,7 @@ func (h *APIHandlers) UpdateArticle(c *gin.Context) {
 		"summary":      updatedArticle["Summary"],
 		"author":       updatedArticle["Author"],
 		"categoryId":   updatedArticle["CategoryId"],
-		"tags":         updatedArticle["Tags"],
-		"isPublished":  updatedArticle["IsPublished"],
+		"tags":         tags,
 		"viewCount":    updatedArticle["ViewCount"],
 		"readCount":    updatedArticle["ReadCount"],
 		"created_at":   updatedArticle["CreationTime"],
@@ -574,7 +670,11 @@ func (h *APIHandlers) UpdateArticle(c *gin.Context) {
 		"published_at": updatedArticle["PublishedAt"],
 	}
 
-	c.JSON(200, article)
+	c.JSON(200, utils.StandardResponse{
+		Success: true,
+		Message: "Article updated successfully",
+		Data:    article,
+	})
 }
 
 // DeleteArticle deletes an article by ID
@@ -646,7 +746,7 @@ func (h *APIHandlers) GetCategories(c *gin.Context) {
 
 // Videos API handlers
 
-// GetVideos returns list of videos
+// GetVideos returns list of videos with cover images
 func (h *APIHandlers) GetVideos(c *gin.Context) {
 	if h.db == nil {
 		c.JSON(200, gin.H{
@@ -656,31 +756,73 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 		return
 	}
 
+	// Get videos with image relationships
 	var rawVideos []map[string]interface{}
-	result := h.db.Table("CloudVideos").Limit(10).Find(&rawVideos)
+	result := h.db.Table("CloudVideos").
+		Select(`CloudVideos.*,
+			site_image.SiteUrl as CoverImageUrl, site_image.Name as CoverImageName,
+			promo_image.SiteUrl as PromoImageUrl, promo_image.Name as PromoImageName,
+			thumb_image.SiteUrl as ThumbnailImageUrl, thumb_image.Name as ThumbnailImageName`).
+		Joins("LEFT JOIN SiteImages as site_image ON CloudVideos.SiteImageId = site_image.Id AND site_image.IsDeleted = 0").
+		Joins("LEFT JOIN SiteImages as promo_image ON CloudVideos.PromotionPicId = promo_image.Id AND promo_image.IsDeleted = 0").
+		Joins("LEFT JOIN SiteImages as thumb_image ON CloudVideos.ThumbnailId = thumb_image.Id AND thumb_image.IsDeleted = 0").
+		Where("CloudVideos.IsDeleted = 0").
+		Limit(10).
+		Find(&rawVideos)
+
 	if result.Error != nil {
 		c.JSON(500, gin.H{"error": result.Error.Error()})
 		return
 	}
 
-	// Map database fields to frontend expected fields
+	// Map database fields to frontend expected fields with cover images
 	videos := make([]map[string]interface{}, len(rawVideos))
 	for i, rawVideo := range rawVideos {
-		videos[i] = map[string]interface{}{
+		video := map[string]interface{}{
 			"id":          rawVideo["Id"],
 			"title":       rawVideo["Title"],
 			"description": rawVideo["Description"],
 			"url":         rawVideo["Url"],
-			"thumbnail":   rawVideo["Thumbnail"],
+			"playbackUrl": rawVideo["PlaybackUrl"],
+			"cloudUrl":    rawVideo["CloudUrl"],
 			"duration":    rawVideo["Duration"],
 			"created_at":  rawVideo["CreationTime"],
 			"updated_at":  rawVideo["LastModificationTime"],
 			"author":      rawVideo["Author"],
-			"views":       rawVideo["Views"],
+			"views":       rawVideo["ViewCount"],
 			"status":      rawVideo["Status"],
 			"size":        rawVideo["Size"],
 			"format":      rawVideo["Format"],
+			"videoType":   rawVideo["VideoType"],
+			"quality":     rawVideo["Quality"],
+			"isOpen":      rawVideo["IsOpen"],
 		}
+
+		// Add cover image URLs with proper base URL
+		baseURL := "http://localhost:8080"
+		if rawVideo["CoverImageUrl"] != nil {
+			video["coverImage"] = baseURL + rawVideo["CoverImageUrl"].(string)
+			video["coverImageName"] = rawVideo["CoverImageName"]
+		}
+		if rawVideo["PromoImageUrl"] != nil {
+			video["promoImage"] = baseURL + rawVideo["PromoImageUrl"].(string)
+			video["promoImageName"] = rawVideo["PromoImageName"]
+		}
+		if rawVideo["ThumbnailImageUrl"] != nil {
+			video["thumbnail"] = baseURL + rawVideo["ThumbnailImageUrl"].(string)
+			video["thumbnailName"] = rawVideo["ThumbnailImageName"]
+		}
+
+		// Use the best available image as the primary thumbnail
+		if video["thumbnail"] != nil {
+			video["thumbnailUrl"] = video["thumbnail"]
+		} else if video["coverImage"] != nil {
+			video["thumbnailUrl"] = video["coverImage"]
+		} else if video["promoImage"] != nil {
+			video["thumbnailUrl"] = video["promoImage"]
+		}
+
+		videos[i] = video
 	}
 
 	c.JSON(200, gin.H{
