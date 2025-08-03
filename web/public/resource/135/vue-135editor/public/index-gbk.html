@@ -1,0 +1,64 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>����demo</title>
+<meta http-equiv="Content-Type" content="text/html;charset=gbk"/>
+
+<!-- �������js�ļ� -->
+<script type="text/javascript" charset="utf-8" src="./ueditor.config.js"></script>
+<script type="text/javascript" charset="utf-8" src="./third-party/jquery-3.3.1.min.js"></script>
+<script type="text/javascript" charset="utf-8" src="./ueditor.all.min.js"> </script>
+<script type="text/javascript" charset="utf-8" src="./a92d301d77.js"> </script>
+<!-- �������css�ļ� -->
+<link rel="stylesheet" type="text/css" href="./themes/96619a5672.css" />
+</head>
+<body>
+<div>
+<h1>demo</h1>
+<!-- ָ���༭������Ŀ��ȣ����ػ���100% -->
+<script id="editor" type="text/plain" style="width:1024px;"></script>
+</div>
+<script>
+
+/**
+ *
+ * 1. �����ʼ���� window.current_editor,һ��ҳ���֧�ּ���һ������ʽ�ı༭�������ʱ�����ఴ�ٶȱ༭���ĳ�ʼ���������ɡ�
+ * 2. ֱ�ӵ���JS����Ҫʹ��vue��import�ķ�ʽ
+ * 3. ��ueditor.config.js�ļ��У�serverUrlΪ�ϴ��ļ��ӿڵ�ַ�����ݷ���������ѡ���Ӧ��php,jsp,asp,net�ӿڳ���
+ * 4. ��ueditor.config.js�ļ��У�toolbarsΪ�༭���Ĺ�������ť��ɸ�����Ҫ����ɾ��
+ *
+ *
+ *
+ * ҳ���ϲ�������referrer�������ܰ��� <meta?name="referrer"?content="never">?����?<meta?name="referrer"?content="no-referrer">
+ *
+ *
+ *
+============��Ŀ����css����css���ӵ���Ŀ����������������ʾҳ��==========================================
+* {-webkit-max-logical-width: 100%;margin:0;padding:0;box-sizing: border-box!important;-webkit-box-sizing: border-box!important;word-wrap: break-word!important;}
+body{-webkit-touch-callout:none;position: absolute; width: 100%;margin: 0;padding: 15px !important;font-size:16px;overflow-x:hidden;font-family:'΢���ź�','Microsoft YaHei',Arial,sans-serif;background-color:#FFF;line-height:inherit;height:100%;}
+p{clear:both;margin:0 0;white-space: normal;}
+img{*zoom:1;max-width:100%;*max-width:96%;height:auto !important;}
+ul{padding-left:30px;}
+======================================================
+ *
+ *
+ * 
+ */
+var appkey = '5c99c2c4-98a4-4b6c-b065-4fc3ac109a29';
+window.BASEURL = 'https://www.135editor.com';
+window.current_editor = UE.getEditor('editor',{
+    plat_host:'www.135editor.com',
+    appkey:appkey,open_editor:true,pageLoad:true,
+    style_url : BASEURL+'/editor_styles/open?inajax=1&v=page&appkey=' + appkey,
+    style_width:340,
+
+    initialFrameHeight:680,
+    zIndex : 1000,
+    focus:true,
+    autoFloatEnabled:false,autoHeightEnabled:false,scaleEnabled:false,
+    focusInEnd:true
+});
+</script>
+</body>
+</html>

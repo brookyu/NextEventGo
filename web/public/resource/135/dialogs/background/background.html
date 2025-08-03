@@ -1,0 +1,262 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <script type="text/javascript" src="../../dialogs/internal.js?v=1532"></script>
+    <!-- jquery -->
+    <script type="text/javascript" src="../../third-party/jquery-3.3.1.min.js"></script>
+    <script src="../../third-party/webuploader/webuploader.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../third-party/webuploader/webuploader.css">
+    <link rel="stylesheet" type="text/css" href="../../dialogs/background/background.css">
+    <link rel="stylesheet" type="text/css" href="../../dialogs//music/upload.css">
+    <style>
+        .bgarea {
+            height: 90%;
+            border: 0 none;
+            margin: 5px 10px;
+        }
+        
+        .col-sm-4 {
+            position: relative;
+            min-height: 1px;
+            margin: 0 0 9px 9px;
+            width: 190px;
+            display: inline-block;
+        }
+        
+        .pagelink {
+            text-align: center;
+        }
+        
+        .appmsg {
+            position: relative;
+            margin: 5px;
+            border: 1px solid #CCC;
+            padding: 2px;
+        }
+        
+        .appmsg img {
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        .deleteMsg {
+            cursor: pointer;
+        }
+        
+        .img-opr input,
+        .uploadfile-toolbar {
+            display: none;
+        }
+        
+        #imageList img {
+            opacity: 0;
+        }
+        
+        #upload .placeholder .webuploader-pick {
+            background: #ff794f;
+            font-size: 14px
+        }
+        
+        #alignType,
+        #repeatBgType {
+            width: 36.4%;
+            padding: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        #url,
+        #sizeType {
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="bg_container" class="wrapper">
+        <div id="tabHeads" class="tabhead">
+            <span class="" data-content-id="normal">背景设置</span>
+            <span class="focus" data-content-id="imgManager">在线背景图片</span>
+            <!-- <span class="" data-content-id="mine">我上传的背景图</span> -->
+        </div>
+        <div id="tabBodys" class="tabbody">
+            <div id="mine" class="panel" style="overflow-y:auto;"></div>
+            <div id="normal" class="panel ">
+                <fieldset class="bgarea">
+                    <div class="content">
+                        <div class="pl">
+                            <label><input id="nocolorRadio" class="iptradio" type="radio" name="t" value="none"
+                                    checked="checked">无背景 </label>
+                            <label><input id="coloredRadio" class="iptradio" type="radio" name="t" value="color">有背景
+                            </label>
+                        </div>
+                        <div class=" pl row">
+                            <div class="color col-md-2">
+                                <var id="lang_background_color"></var>:
+                            </div>
+                            <div class="col-md-10">
+                                <div style="display:inline-block;line-height: 0em;vertical-align: text-bottom;">
+                                    <div id="colorPicker"></div>
+                                </div>
+
+                                <label><input id="linearcolorCheckbox" class="iptradio" type="checkbox"
+                                        checked="checked">渐变 </label>&nbsp;&nbsp;<label>上下边距:</label><input class="txt" value="10px" style="width:40px;" type="text" id="v-padding">
+                                <label>左右边距:</label><input class="txt" value="10px" style="width:40px;" type="text" id="h-padding">
+                                <div class="clear"></div>
+                            </div>
+                        </div>
+
+                        <div class=" pl row">
+                            <div class="col-md-2">
+                                <label>背景图片:</label></div>
+                            <div class="col-md-10">
+                                <input placeholder="填入自定义背景图片的网址" class="txt" type="text" id="url"></div>
+                        </div>
+                        <div id="alignment" class="alignment">
+                            <div class="row" style="margin-bottom: 10px">
+                                <div class="col-md-2">背景图尺寸:</div>
+                                <div class="col-md-10">
+                                    <select id="sizeType">
+                                        <option value="auto auto">自动</option>
+                                        <option value="cover">按长边等比缩放填满（可能超出边界不显示）</option>
+                                        <option value="contain">按短边等比缩放（可能留白或重复）</option>
+                                        <option value="100% auto">水平拉伸（等比）</option>
+                                        <option value="auto 100%">垂直拉伸（等比）</option>
+                                        <option value="100% 100%">双向拉伸（拉长）</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <var id="lang_background_align"></var> : <select id="alignType">
+                                <option value="center center">居中</option>
+                                <option value="left top">左上</option>
+                                <option value="right top">右上</option>
+                                <option value="self">自定义</option>
+                            </select> &nbsp;&nbsp;&nbsp;&nbsp;重复方式 : <select id="repeatBgType">
+                                <option value="repeat">平铺</option>
+                                <option value="no-repeat">不重复</option>
+                                <option value="repeat-x">水平重复</option>
+                                <option value="repeat-y">竖直重复</option>
+                            </select>
+
+
+                        </div>
+
+                        <div id="custom">
+                            <var id="lang_background_position"></var> : x:<input type="text" size="1" id="x" maxlength="4" value="0">px&nbsp;&nbsp;y:<input type="text" size="1" id="y" maxlength="4" value="0">px
+                        </div>
+                    </div>
+
+                    <div id="upload">
+                        <div id="queueList" class="queueList">
+                            <div id="dndArea" class="placeholder">
+                                <div class="filePickerContainer">
+                                    <div id="filePickerReady" style="display: inline-block;">
+
+                                    </div>
+                                </div>
+                            </div>
+                            <ul class="filelist">
+
+                            </ul>
+                        </div>
+                    </div>
+                </fieldset>
+
+            </div>
+            <div id="imgManager" class="panel focus">
+                <div id="remote-links" style="padding-left:10px;">
+                    <a href="#" class="focus" data-tagid="">全部</a>
+                    <a href="#" data-tagid="1229">方格斜纹</a>
+                    <a href="#" data-tagid="545">灰色</a>
+                    <a href="#" data-tagid="1163">粉色</a>
+                    <a href="#" data-tagid="1162">橙色</a>
+                    <a href="#" data-tagid="533">黄色</a>
+                    <a href="#" data-tagid="704">红色</a>
+                    <a href="#" data-tagid="428">蓝色</a>
+                    <a href="#" data-tagid="707">绿色</a>
+                    <a href="#" data-tagid="1164">紫色</a>
+                    <a href="#" data-tagid="558">黑色</a>
+
+                    <input id="search-txt" placeholder="搜索词" type="text" style="width:60px;padding: 2px;"><input type="button" value="搜索">
+                </div>
+
+                <div id="imageList" style=""></div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="./background.js?v=1539"></script>
+
+    <script>
+        var mimeTypes = 'image/gif,image/png,image/jpeg,image/jpg',
+            actionUrl = editor.getActionUrl('uploadimage'),
+            acceptExtensions = 'png,jpg,jpeg,gif,bmp',
+            imageMaxSize = 2048000, //2M
+
+            imageFieldName = editor.options.backgroundImageFieldName || 'background',
+            uploadFormData = {
+                'file_post_name': 'background',
+                'file_model_name': 'WxMsg'
+            },
+            uploadCallback = function(json) {
+                $('#url').val(json.url).focus();
+                $('#url').trigger('blur');
+            },
+
+            lang = {
+                'static': {
+                    'lang_background_normal': '背景设置',
+                    'lang_background_local': '在线背景图片',
+                    'lang_background_set': '选项',
+                    'lang_background_none': '无背景色',
+                    'lang_background_colored': '有背景色',
+                    'lang_background_color': '颜色设置',
+                    'lang_background_netimg': '网络图片',
+                    'lang_background_align': '对齐方式',
+                    'lang_background_position': '精确定位',
+                    'repeatType': {
+                        'options': ["居中", "横向重复", "纵向重复", "平铺", "自定义"]
+                    }
+
+                },
+                'noUploadImage': "当前未上传过任何图片！",
+                'toggleSelect': "单击可切换选中状态\n原图尺寸: ",
+
+                'uploadSelectFile': '上传本地背景图片',
+                'uploadAddFile': '继续添加',
+                'uploadStart': '开始上传',
+                'uploadPause': '暂停上传',
+                'uploadContinue': '继续上传',
+                'uploadRetry': '重试上传',
+                'uploadDelete': '删除',
+                'uploadTurnLeft': '向左旋转',
+                'uploadTurnRight': '向右旋转',
+                'uploadPreview': '预览中',
+                'uploadNoPreview': '不能预览',
+                'updateStatusReady': '选中_张图片，共_KB。',
+                'updateStatusConfirm': '已成功上传_张照片，_张照片上传失败',
+                'updateStatusFinish': '共_张（_KB），_张上传成功',
+                'updateStatusError': '，_张上传失败。',
+                'errorNotSupport': 'WebUploader 不支持您的浏览器！如果你使用的是IE浏览器，请尝试升级 flash 播放器。',
+                'errorLoadConfig': '后端配置项没有正常加载，上传插件不能正常使用！',
+                'errorExceedSize': '文件大小超出',
+                'errorFileType': '文件格式不允许',
+                'errorInterrupt': '文件传输中断',
+                'errorUploadRetry': '上传失败，请重试',
+                'errorHttp': 'http请求错误',
+                'errorServerUpload': '服务器返回出错',
+                'remoteLockError': "宽高不正确,不能所定比例",
+                'numError': "请输入正确的长度或者宽度值！例如：123，400",
+                'imageUrlError': "不允许的图片格式或者图片域！",
+                'imageLoadError': "图片加载失败！请检查链接地址或网络状态！",
+                'searchRemind': "请输入搜索关键词",
+                'searchLoading': "图片加载中，请稍后……",
+                'searchRetry': " :( ，抱歉，没有找到图片！请重试一次！"
+            };
+    </script>
+    <script src="../../dialogs/music/upload.js"></script>
+
+</body>
+
+</html>

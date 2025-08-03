@@ -1,0 +1,1627 @@
+openapi: 3.0.3
+info:
+  title: NextEvent Go API
+  description: |
+    Comprehensive API for the NextEvent platform, providing event management, 
+    content management, news publishing, and video streaming capabilities.
+    
+    This API maintains full compatibility with the existing .NET implementation
+    while providing enhanced performance and scalability.
+  version: 2.0.0
+  contact:
+    name: NextEvent Development Team
+    email: dev@nextevent.com
+  license:
+    name: Proprietary
+    url: https://nextevent.com/license
+
+servers:
+  - url: https://api.nextevent.com/v2
+    description: Production server
+  - url: https://staging-api.nextevent.com/v2
+    description: Staging server
+  - url: http://localhost:8080/api/v2
+    description: Development server
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+paths:
+  # Image Management API
+  /images:
+    get:
+      tags:
+        - Images
+      summary: List images
+      description: Retrieve a paginated list of images with filtering options
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          description: Search term for image names or descriptions
+          schema:
+            type: string
+        - name: category
+          in: query
+          description: Filter by image category
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: Filter by image type
+          schema:
+            $ref: '#/components/schemas/ImageType'
+        - name: includeMetadata
+          in: query
+          description: Include image metadata in response
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of images retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Images
+      summary: Upload image
+      description: Upload a new image with metadata
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+      responses:
+        '201':
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /images/{id}:
+    get:
+      tags:
+        - Images
+      summary: Get image
+      description: Retrieve a specific image by ID
+      parameters:
+        - $ref: '#/components/parameters/ImageId'
+        - name: includeMetadata
+          in: query
+          description: Include image metadata in response
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Image retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Images
+      summary: Update image
+      description: Update image metadata
+      parameters:
+        - $ref: '#/components/parameters/ImageId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageUpdateRequest'
+      responses:
+        '200':
+          description: Image updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Images
+      summary: Delete image
+      description: Delete an image (soft delete)
+      parameters:
+        - $ref: '#/components/parameters/ImageId'
+      responses:
+        '204':
+          description: Image deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Article Management API
+  /articles:
+    get:
+      tags:
+        - Articles
+      summary: List articles
+      description: Retrieve a paginated list of articles with filtering options
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: search
+          in: query
+          description: Search term for article titles or content
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by article status
+          schema:
+            $ref: '#/components/schemas/ArticleStatus'
+        - name: authorId
+          in: query
+          description: Filter by author ID
+          schema:
+            type: string
+            format: uuid
+        - name: categoryId
+          in: query
+          description: Filter by category ID
+          schema:
+            type: string
+            format: uuid
+        - name: includeContent
+          in: query
+          description: Include full article content in response
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of articles retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Articles
+      summary: Create article
+      description: Create a new article
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleCreateRequest'
+      responses:
+        '201':
+          description: Article created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # News Management API
+  /news:
+    get:
+      tags:
+        - News
+      summary: List news
+      description: Retrieve a paginated list of news publications
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          description: Filter by news status
+          schema:
+            $ref: '#/components/schemas/NewsStatus'
+        - name: type
+          in: query
+          description: Filter by news type
+          schema:
+            $ref: '#/components/schemas/NewsType'
+        - name: isFeatured
+          in: query
+          description: Filter by featured news
+          schema:
+            type: boolean
+        - name: isBreaking
+          in: query
+          description: Filter by breaking news
+          schema:
+            type: boolean
+        - name: includeAnalytics
+          in: query
+          description: Include analytics data
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of news retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - News
+      summary: Create news
+      description: Create a new news publication with multiple articles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewsCreateRequest'
+      responses:
+        '201':
+          description: News created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /news/{id}/publish:
+    post:
+      tags:
+        - News
+      summary: Publish news
+      description: Publish a news publication and optionally sync to WeChat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: News ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: News published successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Video Management API
+  /videos:
+    get:
+      tags:
+        - Videos
+      summary: List videos
+      description: Retrieve a paginated list of videos with filtering options
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - name: status
+          in: query
+          description: Filter by video status
+          schema:
+            $ref: '#/components/schemas/VideoStatus'
+        - name: type
+          in: query
+          description: Filter by video type
+          schema:
+            $ref: '#/components/schemas/VideoType'
+        - name: quality
+          in: query
+          description: Filter by video quality
+          schema:
+            $ref: '#/components/schemas/VideoQuality'
+        - name: isLive
+          in: query
+          description: Filter by live videos
+          schema:
+            type: boolean
+        - name: includeAnalytics
+          in: query
+          description: Include analytics data
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: List of videos retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Videos
+      summary: Create video
+      description: Create a new video with cloud streaming support
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoCreateRequest'
+      responses:
+        '201':
+          description: Video created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /videos/{id}:
+    get:
+      tags:
+        - Videos
+      summary: Get video
+      description: Retrieve a specific video by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Video ID
+          schema:
+            type: string
+            format: uuid
+        - name: includeAnalytics
+          in: query
+          description: Include analytics data
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Video retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - Videos
+      summary: Update video
+      description: Update video metadata and settings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Video ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoUpdateRequest'
+      responses:
+        '200':
+          description: Video updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - Videos
+      summary: Delete video
+      description: Delete a video (soft delete)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Video ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Video deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /videos/{id}/start:
+    post:
+      tags:
+        - Videos
+      summary: Start live stream
+      description: Start a live video stream
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Video ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Live stream started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  streamKey:
+                    type: string
+                    example: "live_abc123def456"
+                  streamUrl:
+                    type: string
+                    format: uri
+                    example: "rtmp://stream.nextevent.com/live/abc123def456"
+                  playbackUrl:
+                    type: string
+                    format: uri
+                    example: "https://stream.nextevent.com/play/abc123def456.m3u8"
+                  status:
+                    type: string
+                    example: "live"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /videos/{id}/stop:
+    post:
+      tags:
+        - Videos
+      summary: Stop live stream
+      description: Stop a live video stream
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Video ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Live stream stopped successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ended"
+                  duration:
+                    type: integer
+                    description: Stream duration in seconds
+                    example: 3600
+                  viewCount:
+                    type: integer
+                    format: int64
+                    example: 150
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Page number for pagination
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      description: Number of items per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ImageId:
+      name: id
+      in: path
+      required: true
+      description: Image ID
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    # Common Types
+    UUID:
+      type: string
+      format: uuid
+      example: "123e4567-e89b-12d3-a456-426614174000"
+
+    Timestamp:
+      type: string
+      format: date-time
+      example: "2023-12-01T10:30:00Z"
+
+    # Image Management Schemas
+    ImageType:
+      type: string
+      enum: [cover, thumbnail, gallery, profile, banner, icon, background]
+      description: Type of image
+
+    ImageStatus:
+      type: string
+      enum: [active, archived, deleted]
+      description: Status of image
+
+    ImageResponse:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        fileName:
+          type: string
+          example: "event-banner.jpg"
+        originalName:
+          type: string
+          example: "My Event Banner.jpg"
+        title:
+          type: string
+          example: "Event Banner"
+        description:
+          type: string
+          example: "Main banner for the tech conference"
+        altText:
+          type: string
+          example: "Tech conference banner with speakers"
+        type:
+          $ref: '#/components/schemas/ImageType'
+        status:
+          $ref: '#/components/schemas/ImageStatus'
+        url:
+          type: string
+          format: uri
+          example: "https://cdn.nextevent.com/images/event-banner.jpg"
+        thumbnailUrl:
+          type: string
+          format: uri
+          example: "https://cdn.nextevent.com/images/thumbs/event-banner.jpg"
+        fileSize:
+          type: integer
+          format: int64
+          example: 1048576
+        width:
+          type: integer
+          example: 1920
+        height:
+          type: integer
+          example: 1080
+        mimeType:
+          type: string
+          example: "image/jpeg"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["event", "banner", "tech"]
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+        createdBy:
+          $ref: '#/components/schemas/UUID'
+
+    ImageUploadRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Image file to upload
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        altText:
+          type: string
+          maxLength: 500
+        type:
+          $ref: '#/components/schemas/ImageType'
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+        - file
+        - title
+        - type
+
+    ImageUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        altText:
+          type: string
+          maxLength: 500
+        type:
+          $ref: '#/components/schemas/ImageType'
+        status:
+          $ref: '#/components/schemas/ImageStatus'
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties: true
+
+    ImageListResponse:
+      type: object
+      properties:
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageResponse'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        limit:
+          type: integer
+        pages:
+          type: integer
+
+    # Article Management Schemas
+    ArticleStatus:
+      type: string
+      enum: [draft, published, archived, deleted]
+      description: Status of article
+
+    ArticleType:
+      type: string
+      enum: [standard, featured, news, blog, guide]
+      description: Type of article
+
+    ArticleResponse:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          type: string
+          example: "Getting Started with NextEvent"
+        subtitle:
+          type: string
+          example: "A comprehensive guide to event management"
+        summary:
+          type: string
+          example: "Learn how to create and manage events effectively"
+        content:
+          type: string
+          example: "# Introduction\n\nThis guide will help you..."
+        type:
+          $ref: '#/components/schemas/ArticleType'
+        status:
+          $ref: '#/components/schemas/ArticleStatus'
+        slug:
+          type: string
+          example: "getting-started-with-nextevent"
+        featuredImageId:
+          $ref: '#/components/schemas/UUID'
+        thumbnailId:
+          $ref: '#/components/schemas/UUID'
+        authorId:
+          $ref: '#/components/schemas/UUID'
+        editorId:
+          $ref: '#/components/schemas/UUID'
+        categoryId:
+          $ref: '#/components/schemas/UUID'
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["guide", "tutorial", "events"]
+        metaTitle:
+          type: string
+        metaDescription:
+          type: string
+        keywords:
+          type: string
+        readTime:
+          type: integer
+          description: Estimated read time in minutes
+        viewCount:
+          type: integer
+          format: int64
+        likeCount:
+          type: integer
+          format: int64
+        shareCount:
+          type: integer
+          format: int64
+        publishedAt:
+          $ref: '#/components/schemas/Timestamp'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    ArticleCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        subtitle:
+          type: string
+          maxLength: 1000
+        summary:
+          type: string
+          maxLength: 2000
+        content:
+          type: string
+        type:
+          $ref: '#/components/schemas/ArticleType'
+        slug:
+          type: string
+          maxLength: 500
+        featuredImageId:
+          $ref: '#/components/schemas/UUID'
+        thumbnailId:
+          $ref: '#/components/schemas/UUID'
+        categoryId:
+          $ref: '#/components/schemas/UUID'
+        tags:
+          type: array
+          items:
+            type: string
+        metaTitle:
+          type: string
+          maxLength: 500
+        metaDescription:
+          type: string
+          maxLength: 1000
+        keywords:
+          type: string
+          maxLength: 1000
+        scheduledAt:
+          $ref: '#/components/schemas/Timestamp'
+      required:
+        - title
+        - content
+        - type
+
+    ArticleListResponse:
+      type: object
+      properties:
+        articles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArticleResponse'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        limit:
+          type: integer
+        pages:
+          type: integer
+
+    # News Management Schemas
+    NewsStatus:
+      type: string
+      enum: [draft, scheduled, published, archived, deleted]
+      description: Status of news publication
+
+    NewsType:
+      type: string
+      enum: [standard, breaking, featured, urgent]
+      description: Type of news publication
+
+    NewsPriority:
+      type: string
+      enum: [low, normal, high, urgent]
+      description: Priority level of news
+
+    NewsResponse:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          type: string
+          example: "Major Tech Conference Announced"
+        subtitle:
+          type: string
+          example: "Industry leaders to gather for innovation summit"
+        description:
+          type: string
+          example: "The annual tech conference will feature keynotes from major industry leaders"
+        summary:
+          type: string
+          example: "Key highlights and speakers for the upcoming conference"
+        content:
+          type: string
+          description: Aggregated content from associated articles
+        status:
+          $ref: '#/components/schemas/NewsStatus'
+        type:
+          $ref: '#/components/schemas/NewsType'
+        priority:
+          $ref: '#/components/schemas/NewsPriority'
+        slug:
+          type: string
+          example: "major-tech-conference-announced"
+        featuredImageId:
+          $ref: '#/components/schemas/UUID'
+        thumbnailId:
+          $ref: '#/components/schemas/UUID'
+        authorId:
+          $ref: '#/components/schemas/UUID'
+        editorId:
+          $ref: '#/components/schemas/UUID'
+        isFeatured:
+          type: boolean
+        isBreaking:
+          type: boolean
+        isSticky:
+          type: boolean
+        allowComments:
+          type: boolean
+        allowSharing:
+          type: boolean
+        requireAuth:
+          type: boolean
+        viewCount:
+          type: integer
+          format: int64
+        shareCount:
+          type: integer
+          format: int64
+        likeCount:
+          type: integer
+          format: int64
+        commentCount:
+          type: integer
+          format: int64
+        readTime:
+          type: integer
+          description: Estimated read time in minutes
+        publishedAt:
+          $ref: '#/components/schemas/Timestamp'
+        scheduledAt:
+          $ref: '#/components/schemas/Timestamp'
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+        articles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArticleResponse'
+          description: Associated articles (1-8 articles per news)
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryResponse'
+        wechatStatus:
+          type: object
+          properties:
+            draftId:
+              type: string
+            publishedId:
+              type: string
+            status:
+              type: string
+              enum: [none, draft, published, failed]
+            url:
+              type: string
+              format: uri
+
+    NewsCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        subtitle:
+          type: string
+          maxLength: 1000
+        description:
+          type: string
+          maxLength: 2000
+        summary:
+          type: string
+          maxLength: 1000
+        type:
+          $ref: '#/components/schemas/NewsType'
+        priority:
+          $ref: '#/components/schemas/NewsPriority'
+        slug:
+          type: string
+          maxLength: 500
+        featuredImageId:
+          $ref: '#/components/schemas/UUID'
+        thumbnailId:
+          $ref: '#/components/schemas/UUID'
+        isFeatured:
+          type: boolean
+          default: false
+        isBreaking:
+          type: boolean
+          default: false
+        allowComments:
+          type: boolean
+          default: true
+        allowSharing:
+          type: boolean
+          default: true
+        requireAuth:
+          type: boolean
+          default: false
+        scheduledAt:
+          $ref: '#/components/schemas/Timestamp'
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+        articleIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/UUID'
+          minItems: 1
+          maxItems: 8
+          description: IDs of articles to include in this news (1-8 articles)
+        articleSettings:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              isMainStory:
+                type: boolean
+              isFeatured:
+                type: boolean
+              section:
+                type: string
+                maxLength: 100
+              summary:
+                type: string
+                maxLength: 1000
+        categoryIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/UUID'
+        metaTitle:
+          type: string
+          maxLength: 500
+        metaDescription:
+          type: string
+          maxLength: 1000
+        keywords:
+          type: string
+          maxLength: 1000
+        tags:
+          type: string
+          maxLength: 1000
+      required:
+        - title
+        - type
+        - priority
+        - articleIds
+
+    NewsListResponse:
+      type: object
+      properties:
+        news:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewsResponse'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        limit:
+          type: integer
+        pages:
+          type: integer
+
+    # Video Management Schemas
+    VideoUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        summary:
+          type: string
+          maxLength: 2000
+        quality:
+          $ref: '#/components/schemas/VideoQuality'
+        isOpen:
+          type: boolean
+        requireAuth:
+          type: boolean
+        supportInteraction:
+          type: boolean
+        allowDownload:
+          type: boolean
+        siteImageId:
+          $ref: '#/components/schemas/UUID'
+        thumbnailId:
+          $ref: '#/components/schemas/UUID'
+        categoryId:
+          $ref: '#/components/schemas/UUID'
+        boundEventId:
+          $ref: '#/components/schemas/UUID'
+        startTime:
+          $ref: '#/components/schemas/Timestamp'
+        videoEndTime:
+          $ref: '#/components/schemas/Timestamp'
+        resolution:
+          type: string
+        frameRate:
+          type: number
+          format: float
+        bitrate:
+          type: integer
+        codec:
+          type: string
+        slug:
+          type: string
+          maxLength: 500
+        metaTitle:
+          type: string
+          maxLength: 500
+        metaDescription:
+          type: string
+          maxLength: 1000
+        keywords:
+          type: string
+          maxLength: 1000
+        tags:
+          type: string
+          maxLength: 1000
+    VideoStatus:
+      type: string
+      enum: [draft, scheduled, live, ended, archived, deleted]
+      description: Status of video
+
+    VideoType:
+      type: string
+      enum: [live, on_demand, recorded, streaming]
+      description: Type of video
+
+    VideoQuality:
+      type: string
+      enum: [auto, 360p, 480p, 720p, 1080p, 4k]
+      description: Video quality setting
+
+    VideoResponse:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        title:
+          type: string
+          example: "Live Tech Conference Keynote"
+        summary:
+          type: string
+          example: "Join us for an exciting keynote presentation"
+        videoType:
+          $ref: '#/components/schemas/VideoType'
+        status:
+          $ref: '#/components/schemas/VideoStatus'
+        cloudUrl:
+          type: string
+          format: uri
+          example: "https://stream.nextevent.com/live/conference-keynote"
+        streamKey:
+          type: string
+          example: "live_abc123def456"
+        playbackUrl:
+          type: string
+          format: uri
+          example: "https://stream.nextevent.com/play/conference-keynote.m3u8"
+        quality:
+          $ref: '#/components/schemas/VideoQuality'
+        duration:
+          type: integer
+          description: Duration in seconds
+        isOpen:
+          type: boolean
+          description: Whether video is publicly accessible
+        requireAuth:
+          type: boolean
+          description: Whether authentication is required
+        supportInteraction:
+          type: boolean
+          description: Whether viewer interaction is enabled
+        allowDownload:
+          type: boolean
+          description: Whether video can be downloaded
+        siteImageId:
+          $ref: '#/components/schemas/UUID'
+        thumbnailId:
+          $ref: '#/components/schemas/UUID'
+        categoryId:
+          $ref: '#/components/schemas/UUID'
+        boundEventId:
+          $ref: '#/components/schemas/UUID'
+        startTime:
+          $ref: '#/components/schemas/Timestamp'
+        videoEndTime:
+          $ref: '#/components/schemas/Timestamp'
+        viewCount:
+          type: integer
+          format: int64
+        likeCount:
+          type: integer
+          format: int64
+        shareCount:
+          type: integer
+          format: int64
+        commentCount:
+          type: integer
+          format: int64
+        watchTime:
+          type: integer
+          format: int64
+          description: Total watch time in seconds
+        averageWatchTime:
+          type: number
+          format: float
+        completionRate:
+          type: number
+          format: float
+          description: Completion rate as percentage
+        engagementScore:
+          type: number
+          format: float
+        fileSize:
+          type: integer
+          format: int64
+        resolution:
+          type: string
+          example: "1920x1080"
+        frameRate:
+          type: number
+          format: float
+        bitrate:
+          type: integer
+          description: Bitrate in kbps
+        codec:
+          type: string
+          example: "H.264"
+        slug:
+          type: string
+        metaTitle:
+          type: string
+        metaDescription:
+          type: string
+        keywords:
+          type: string
+        tags:
+          type: string
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+        analytics:
+          $ref: '#/components/schemas/VideoAnalyticsResponse'
+
+    VideoCreateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 500
+        summary:
+          type: string
+          maxLength: 2000
+        videoType:
+          $ref: '#/components/schemas/VideoType'
+        quality:
+          $ref: '#/components/schemas/VideoQuality'
+        isOpen:
+          type: boolean
+          default: true
+        requireAuth:
+          type: boolean
+          default: false
+        supportInteraction:
+          type: boolean
+          default: false
+        allowDownload:
+          type: boolean
+          default: false
+        siteImageId:
+          $ref: '#/components/schemas/UUID'
+        thumbnailId:
+          $ref: '#/components/schemas/UUID'
+        categoryId:
+          $ref: '#/components/schemas/UUID'
+        boundEventId:
+          $ref: '#/components/schemas/UUID'
+        startTime:
+          $ref: '#/components/schemas/Timestamp'
+        videoEndTime:
+          $ref: '#/components/schemas/Timestamp'
+        resolution:
+          type: string
+        frameRate:
+          type: number
+          format: float
+        bitrate:
+          type: integer
+        codec:
+          type: string
+        slug:
+          type: string
+          maxLength: 500
+        metaTitle:
+          type: string
+          maxLength: 500
+        metaDescription:
+          type: string
+          maxLength: 1000
+        keywords:
+          type: string
+          maxLength: 1000
+        tags:
+          type: string
+          maxLength: 1000
+      required:
+        - title
+        - videoType
+
+    VideoListResponse:
+      type: object
+      properties:
+        videos:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoResponse'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        limit:
+          type: integer
+        pages:
+          type: integer
+
+    VideoAnalyticsResponse:
+      type: object
+      properties:
+        videoId:
+          $ref: '#/components/schemas/UUID'
+        totalSessions:
+          type: integer
+          format: int64
+        completedSessions:
+          type: integer
+          format: int64
+        abandonedSessions:
+          type: integer
+          format: int64
+        averageWatchTime:
+          type: number
+          format: float
+        averageCompletion:
+          type: number
+          format: float
+        averageEngagement:
+          type: number
+          format: float
+        totalWatchTime:
+          type: integer
+          format: int64
+        uniqueViewers:
+          type: integer
+          format: int64
+        returnViewers:
+          type: integer
+          format: int64
+        completionRate:
+          type: number
+          format: float
+        abandonmentRate:
+          type: number
+          format: float
+        averageSessionLength:
+          type: number
+          format: float
+        lastUpdated:
+          $ref: '#/components/schemas/Timestamp'
+
+    # Common Schemas
+    CategoryResponse:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        color:
+          type: string
+        icon:
+          type: string
+        parentId:
+          $ref: '#/components/schemas/UUID'
+        level:
+          type: integer
+        path:
+          type: string
+        displayOrder:
+          type: integer
+        isActive:
+          type: boolean
+        isVisible:
+          type: boolean
+        isFeatured:
+          type: boolean
+        itemCount:
+          type: integer
+          format: int64
+        createdAt:
+          $ref: '#/components/schemas/Timestamp'
+        updatedAt:
+          $ref: '#/components/schemas/Timestamp'
+
+    # Error Response Schemas
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              example: "Invalid input data"
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+                  code:
+                    type: string
+            timestamp:
+              $ref: '#/components/schemas/Timestamp'
+            requestId:
+              type: string
+              format: uuid
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              example: "Validation failed"
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    example: "title"
+                  message:
+                    type: string
+                    example: "Title is required"
+                  code:
+                    type: string
+                    example: "REQUIRED"
+            timestamp:
+              $ref: '#/components/schemas/Timestamp'
+            requestId:
+              type: string
+              format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "UNAUTHORIZED"
+              message: "Authentication required"
+              timestamp: "2023-12-01T10:30:00Z"
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "NOT_FOUND"
+              message: "Resource not found"
+              timestamp: "2023-12-01T10:30:00Z"
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: "INTERNAL_ERROR"
+              message: "An unexpected error occurred"
+              timestamp: "2023-12-01T10:30:00Z"
+              requestId: "123e4567-e89b-12d3-a456-426614174000"
+
+tags:
+  - name: Images
+    description: Image management operations
+  - name: Articles
+    description: Article management operations
+  - name: News
+    description: News publication management operations
+  - name: Videos
+    description: Video content and streaming management operations

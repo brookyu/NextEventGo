@@ -1,0 +1,204 @@
+# Development Environment Configuration
+# Based on .NET Core appsettings.json
+
+# Application Settings
+app:
+  name: "NextEvent"
+  version: "2.0.0"
+  environment: "development"
+  self_url: "http://0.0.0.0:5008"
+  is_development: true
+  cors_origins:
+    - "https://*.colorcon.com.cn"
+    - "https://*.NextEvent.com"
+    - "http://localhost:4200"
+    - "http://localhost:3000"
+    - "http://localhost:3100"
+    - "http://127.0.0.1:29597"
+    - "http://192.168.10.208:3000"
+
+# Server Configuration (Kestrel equivalent)
+server:
+  host: "0.0.0.0"
+  port: 5008
+  https_port: 5009
+  base_url: "http://0.0.0.0:5008"
+  mode: "development"
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+  max_header_bytes: 1048576
+
+# Database Configuration (ConnectionStrings)
+database:
+  driver: "mysql"
+  host: "localhost"
+  port: 3306
+  name: "NextEventDB6"
+  username: "root"
+  password: "~Brook1226,"
+  charset: "utf8mb4"
+  max_open_conns: 100
+  max_idle_conns: 10
+  conn_max_lifetime: 3600s
+  allow_user_variables: true
+  allow_load_local_infile: true
+  parse_time: true
+  loc: "Local"
+
+# Redis Configuration
+redis:
+  host: "localhost"
+  port: 6379
+  password: "mypassword"
+  database: 1
+  pool_size: 10
+  min_idle_conns: 5
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+  pool_timeout: 4s
+  idle_timeout: 300s
+
+# JWT Configuration
+security:
+  jwt:
+    secret: "dzehzRz9a8asdfasfdadfasdfasdfafsdadfasbasdf="
+    issuer: "ZenTeamNextEvent"
+    audience: "ZenTeamNextEvent"
+    expiration: 24 # hours
+
+# Logging Configuration (Serilog equivalent)
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  file_path: "logs/app.log"
+  max_size: 100 # MB
+  max_backups: 10
+  max_age: 30 # days
+  compress: true
+  overrides:
+    "Microsoft": "info"
+    "Volo.Abp": "info"
+    "Hangfire": "info"
+    "DotNetCore.CAP": "info"
+    "Serilog.AspNetCore": "info"
+
+# WeChat Configuration (Wx section)
+wechat:
+  public_account:
+    app_id: "wx9be741fb80d04fb9"
+    app_secret: "5e12e8a8f9b4e25e934b41c2a71b030b"
+    token: "brook1226"
+    aes_key: "2q4bzKQpWMywVriwWjPrnFGMlDzn5F2awp1QSCxSs3h"
+  mini_program:
+    app_id: "wxc320e6056994506c"
+    app_secret: "75f7b7e786296426c8cefdb5d39f2387"
+
+# Message Queue Configuration (CAP equivalent)
+message_queue:
+  enabled: true
+  provider: "rabbitmq"
+  rabbitmq:
+    host: "localhost"
+    port: 5672
+    username: "guest"
+    password: "guest"
+    vhost: "/"
+    exchange: "nextevent.events"
+    queue_prefix: "nextevent"
+
+# ElasticSearch Configuration
+elasticsearch:
+  enabled: false
+  url: "http://es.cn"
+  username: "elastic"
+  password: "aVVhjQ95RP7nbwNy"
+  index_format: "companyname.projectname.development.{date}"
+  search_index_format: "companyname.projectname.development*"
+
+# HTTP Client Configuration
+http_clients:
+  sts:
+    name: "Sts"
+    base_url: "http://localhost:44354"
+    timeout: 30s
+
+# Service Discovery (Consul)
+consul:
+  enabled: false
+  host: "http://localhost:8500"
+  service_name: "Project-Service"
+
+# Email Configuration (Settings section)
+email:
+  smtp:
+    host: "smtp.qq.com"
+    port: 587
+    username: "brookyu@qq.com"
+    password: "pejprdsamnjicaci"
+    use_tls: true
+    from_address: "brookyu@qq.com"
+    from_name: "样品索取"
+    receiver: "brookyu@qq.com"
+
+# Media Configuration
+media:
+  base_url: "https://secure.zenteamserver.com"
+  base_local_path: "/Users/brookyu/Codes/abp-vnext-pro-5.0.0.3/aspnet-core/services/host/ZenTeam.NextEvent.HttpApi.Host/wwwroot/"
+  temp_dir: "temp"
+  max_file_size: 104857600 # 100MB
+  allowed_extensions: [".jpg", ".jpeg", ".png", ".gif", ".pdf", ".doc", ".docx"]
+
+# WeChat Server Configuration
+wechat_server:
+  base_url: "http://s2yms.zenteamserver.com"
+
+# Live Streaming Configuration
+live_streaming:
+  player_url: "http://localhost:3000"
+  cast_server_url: "http://cast.colorcon.wemakecrm.com"
+
+# QR Code Configuration (existing)
+qrcode:
+  size: 256
+  recovery_level: "Medium"
+  border_size: 4
+  background_hex: "#FFFFFF"
+  foreground_hex: "#000000"
+  logo_path: ""
+  logo_size: 64
+  output_dir: "./qrcodes"
+  url_template: "https://example.com/qr/{code}"
+  expiry_duration: "24h"
+  enable_analytics: false
+
+# Feature Flags
+features:
+  analytics_enabled: true
+  wechat_integration_enabled: true
+  elasticsearch_enabled: false
+  consul_enabled: false
+  email_enabled: true
+  file_upload_enabled: true
+  live_streaming_enabled: true
+
+# Cache Configuration
+cache:
+  default_expiration: 3600s # 1 hour
+  cleanup_interval: 600s    # 10 minutes
+  max_items: 10000
+
+# Rate Limiting
+rate_limit:
+  enabled: true
+  requests_per_minute: 60
+  burst: 10
+
+# Monitoring
+monitoring:
+  enabled: true
+  metrics_path: "/metrics"
+  health_path: "/health"
+  pprof_enabled: true

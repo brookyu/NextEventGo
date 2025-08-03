@@ -1,0 +1,102 @@
+<!--
+ * @Author: your name
+ * @Date: 2019-09-30 16:20:33
+ * @LastEditTime: 2020-04-24 18:18:47
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: \135editor\135editor plugin\signature.html
+ -->
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>完整demo</title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<style>#signature-list{display: block!important;}</style>
+<!-- 引入相关js文件 -->
+<script type="text/javascript" charset="utf-8" src="./ueditor.config.js"></script>
+<script type="text/javascript" charset="utf-8" src="./third-party/jquery-3.3.1.min.js"></script>
+<script type="text/javascript" charset="utf-8" src="./ueditor.all.min.js"> </script>
+<script type="text/javascript" charset="utf-8" src="./a92d301d77.js"> </script>
+<!-- 引入相关css文件 -->
+<link rel="stylesheet" type="text/css" href="./themes/96619a5672.css" />
+</head>
+<body>
+<div>
+<h1>demo</h1>
+<!-- 指定编辑器区域的宽度，像素或者100% -->
+<script id="editor" type="text/plain" style="width:1024px;"></script>
+<div id="bottom-toolbar" style="background:transparent;padding: 0;width: 100%;height: 30px;position: absolute;bottom: 1px;width: 100%;z-index:10;"> 
+ <div style="margin:0 0;padding:0 0;line-height:30px;height:30px;" > 
+ <div style="display:inline-block" class="dropdown dropup"> 
+ 
+<a class="dropdown-toggle btn btn-default" data-toggle="dropdown" href="javascript:;" style="background: #fff">使用签名 </a> 
+ <ul class="dropdown-menu" id="signature-list"> 
+ <li><a href="javascript:;" style="font-size: 12px;color: #333" id="no-signature" ><small>不使用签名</small></a></li>
+ <li><a href="/signatures/mine" style="font-size: 12px;color: #333" target="_blank" ><small>管理签名</small></a></li> 
+ </ul> 
+ </div> 
+ 
+ </div> 
+ </div> 
+</div>
+<script>
+
+/**
+ *
+ * 1. 必需初始化至 window.current_editor,一个页面仅支持加载一个带样式的编辑器
+ * 2. 直接调用JS，不要使用vue等import的方式
+ * 3. 在ueditor.config.js文件中，serverUrl为上传文件接口地址，
+ *    根据服务器语言选择对应的接口程序。
+ * 4. 在ueditor.config.js文件中，toolbars为编辑器的工具栏按钮项，
+ *    可根据需要自行删减
+ *
+ *
+ *
+ *
+============项目兼容css，将css添加到项目里文章正文内容显示页中==========================================
+* {-webkit-max-logical-width: 100%;margin:0;padding:0;box-sizing: border-box!important;-webkit-box-sizing: border-box!important;word-wrap: break-word!important;}
+body{-webkit-touch-callout:none;position: absolute; width: 100%;margin: 0;padding: 15px !important;font-size:16px;overflow-x:hidden;font-family:'微软雅黑','Microsoft YaHei',Arial,sans-serif;background-color:#FFF;line-height:inherit;height:100%;}
+p{clear:both;margin:0 0;white-space: normal;}
+img{*zoom:1;max-width:100%;*max-width:96%;height:auto !important;}
+======================================================
+ *
+ *
+ * 
+ */
+var appkey = '566d34e0-4bac-443b-8a80-37f89fde689a';
+window.BASEURL = 'https://www.135editor.com';
+window.current_editor = UE.getEditor('editor',{
+    initialFrameHeight:420,
+    plat_host:'www.135editor.com',
+    appkey:appkey,
+    style_url : BASEURL+'/editor_styles/open?inajax=1&v=page&appkey=' + appkey,
+    page_url : BASEURL+'/editor_styles/open_styles?inajax=1&appkey='+appkey,    
+    style_width:340,    
+    zIndex : 1000,
+    pageLoad:true,
+    open_editor:true,
+    focus:true,
+    autoFloatEnabled:false,autoHeightEnabled:false,scaleEnabled:false,
+    focusInEnd:true
+});
+
+$('#signature-list').prepend('<li><a href="javascript:;" class="signature" data-prefix="&lt;section data-id=&quot;1873&quot; class=&quot;_135editor&quot;&gt;&lt;section style=&quot;border-radius: 2em; height: 2.5em; line-height: 2.5em; color: rgb(255, 255, 255); font-size: 14px; background-color: rgb(226, 121, 97);&quot;&gt;&lt;img src=&quot;http://image2.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpei95cVZBcW9adkRpYkVhaWNEeUl2WDdkTEU5aWNZbndiMnRsT1djRDJCUDk5VjZpYUNma2s4MVJabFFBUmljYk5yN2FtUTdhMExjM3RGZ3BOSk5FVmFZMTg4WlZRLzA/d3hfZm10PXBuZw==&quot; style=&quot;border: 0px rgb(226, 121, 97); float: left; margin: 3px 10px; vertical-align: top; visibility: visible !important; width: auto !important;&quot; class=&quot;assistant&quot;/&gt;&lt;p class=&quot;135brush&quot; data-brushtype=&quot;text&quot; style=&quot;color: inherit; display: inline-block; font-size: 16px;&quot;&gt;关注一下又不会怀孕！&lt;/p&gt;&lt;/section&gt;&lt;/section&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;section data-role=&quot;paragraph&quot; class=&quot;_135editor&quot;&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/section&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;" data-suffix="&lt;section data-id=&quot;80490&quot; class=&quot;_135editor&quot;&gt;&lt;section style=&quot;margin: 10px auto;&quot;&gt;&lt;section data-style=&quot;font-size:14px;text-align:center&quot; style=&quot;line-height: 25px; color: inherit; background-image: url(&amp;quot;http://image2.135editor.com/cache/remote/aHR0cDovL21tYml6LnFwaWMuY24vbW1iaXoveXFWQXFvWnZEaWJGZFQ1U2dra2liZWRqUHFIbUhndWd2U21VMmpPVERpYUo5cEY0UW9zS1VIUWlheDFWbVcyR2JEaWFKMXB5SjlPaWNwT0o2YzRIc1pzd255ZVEvMD93eF9mbXQ9Z2lm&amp;quot;); background-size: contain; background-position: 50% 50%; background-repeat: no-repeat;&quot;&gt;&lt;p style=&quot;text-align: center;&quot;&gt;&lt;img src=&quot;http://image2.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpei95cVZBcW9adkRpYkZkVDVTZ2traWJlZGpQcUhtSGd1Z3ZTM2RoaWFYd1BrUEd4TjhGck15aWNvYUpFeFBQVmFzNUpDUmdvaWNHbnJleWt5ZDkzY29Bb1pIc3lRLzA/d3hfZm10PWpwZWc=&quot; style=&quot;opacity:0.55&quot;/&gt;&lt;/p&gt;&lt;/section&gt;&lt;/section&gt;&lt;/section&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;section data-role=&quot;paragraph&quot; class=&quot;_135editor&quot;&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/section&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;">提子135</a></li><li><a href="javascript:;" class="signature" data-prefix="&lt;p&gt;及环境监&lt;font color=&quot;#333333&quot; face=&quot;宋体&quot;&gt;&lt;span style=&quot;font-size: 14px; line-height: 28px;&quot;&gt;及环境监控 ???? sdf&lt;/span&gt;&lt;/font&gt;&lt;span style=&quot;line-height: inherit;&quot;&gt;控及环境监控&lt;/span&gt;&lt;/p&gt;" data-suffix="&lt;p&gt;及环境监控及及环境监控 ???? sdf环境监 控&lt;/p&gt;">emoji</a></li>');  
+
+$(document).on('click','#signature-list #no-signature',function(){
+    $('body',current_editor.document).find('.assistant.prefix').remove();
+    $('body',current_editor.document).find('.assistant.suffix').remove();
+    return false;
+});
+
+$(document).on('click','#signature-list .signature',function(){
+    $('body',current_editor.document).find('.assistant.prefix').remove();
+    $('body',current_editor.document).find('.assistant.suffix').remove();
+    $('body',current_editor.document).prepend('<section class="assistant prefix">'+$(this).data('prefix')+'</section>');
+    $('body',  .document).append('<section class="assistant suffix">'+$(this).data('suffix')+'</section>');
+    return false;
+});
+
+</script>
+</body>
+</html>

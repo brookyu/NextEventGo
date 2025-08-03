@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nextevent-config
+  namespace: nextevent
+  labels:
+    app.kubernetes.io/name: nextevent
+    app.kubernetes.io/component: config
+data:
+  # Application Configuration
+  ENV: "production"
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  
+  # Server Configuration
+  SERVER_HOST: "0.0.0.0"
+  SERVER_PORT: "8080"
+  SERVER_READ_TIMEOUT: "30s"
+  SERVER_WRITE_TIMEOUT: "30s"
+  SERVER_IDLE_TIMEOUT: "60s"
+  
+  # Database Configuration
+  DB_HOST: "nextevent-postgres"
+  DB_PORT: "5432"
+  DB_NAME: "nextevent"
+  DB_SSL_MODE: "require"
+  DB_MAX_OPEN_CONNS: "25"
+  DB_MAX_IDLE_CONNS: "10"
+  DB_CONN_MAX_LIFETIME: "1h"
+  
+  # Redis Configuration
+  REDIS_HOST: "nextevent-redis"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  REDIS_POOL_SIZE: "10"
+  REDIS_MIN_IDLE_CONNS: "5"
+  
+  # Cache Configuration
+  CACHE_DEFAULT_TTL: "1h"
+  CACHE_IMAGE_TTL: "2h"
+  CACHE_ARTICLE_TTL: "1h"
+  CACHE_NEWS_TTL: "30m"
+  CACHE_VIDEO_TTL: "1h"
+  
+  # Security Configuration
+  SECURITY_RATE_LIMIT: "100"
+  SECURITY_RATE_BURST: "200"
+  SECURITY_MAX_REQUEST_SIZE: "10485760" # 10MB
+  SECURITY_REQUEST_TIMEOUT: "30s"
+  
+  # File Upload Configuration
+  UPLOAD_MAX_SIZE: "52428800" # 50MB
+  UPLOAD_ALLOWED_TYPES: "image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
+  UPLOAD_PATH: "/app/uploads"
+  
+  # External Services
+  WECHAT_API_URL: "https://api.weixin.qq.com"
+  CLOUD_STORAGE_PROVIDER: "minio"
+  CLOUD_STORAGE_ENDPOINT: "nextevent-minio:9000"
+  CLOUD_STORAGE_BUCKET: "nextevent-uploads"
+  
+  # Monitoring Configuration
+  METRICS_ENABLED: "true"
+  METRICS_PATH: "/metrics"
+  HEALTH_CHECK_PATH: "/health"
+  READINESS_CHECK_PATH: "/ready"
+  LIVENESS_CHECK_PATH: "/live"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nextevent-secrets
+  namespace: nextevent
+  labels:
+    app.kubernetes.io/name: nextevent
+    app.kubernetes.io/component: secrets
+type: Opaque
+stringData:
+  # Database Credentials
+  DB_USER: "nextevent"
+  DB_PASSWORD: "nextevent_prod_password_2024"
+  
+  # Redis Password
+  REDIS_PASSWORD: ""
+  
+  # JWT Configuration
+  JWT_SECRET: "your-super-secret-jwt-key-change-in-production"
+  JWT_ISSUER: "nextevent-api"
+  JWT_AUDIENCE: "nextevent-platform"
+  
+  # API Keys
+  API_KEY_ADMIN: "admin-api-key-change-in-production"
+  API_KEY_MOBILE: "mobile-api-key-change-in-production"
+  API_KEY_WEB: "web-api-key-change-in-production"
+  
+  # WeChat Integration
+  WECHAT_APP_ID: "your-wechat-app-id"
+  WECHAT_APP_SECRET: "your-wechat-app-secret"
+  
+  # Cloud Storage Credentials
+  CLOUD_STORAGE_ACCESS_KEY: "nextevent"
+  CLOUD_STORAGE_SECRET_KEY: "nextevent_storage_secret_2024"
+  
+  # External API Keys
+  ALIBABA_CLOUD_ACCESS_KEY: "your-alibaba-access-key"
+  ALIBABA_CLOUD_SECRET_KEY: "your-alibaba-secret-key"

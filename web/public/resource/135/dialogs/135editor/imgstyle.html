@@ -1,0 +1,321 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>图片样式设置</title>
+    <script type="text/javascript" src="../../dialogs/internal.js?v=1532"></script>
+    <!-- jquery -->
+    <script type="text/javascript" src="../../third-party/jquery-3.3.1.min.js"></script>
+    <script type="text/javascript" src="./slider.js"></script>
+
+<style>
+* {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+::-webkit-scrollbar {width:6px;height:6px;background: #f1f1f1;}
+::-webkit-scrollbar-thumb {-webkit-box-shadow: inset 0 0 16px #c1c1c1;}
+::-webkit-input-placeholder {color:    #ddd;}
+#img-dialog-content{background:#f8f8f8;overflow-x: hidden;}
+.item{display:inline-block;width:240px;margin-top:15px;box-sizing: border-box;height:auto;text-align:center;padding:10px;vertical-align: top;border-top: 1px solid #aaa;}
+.item img{max-height:150px;max-width:100%;width:auto !important;}
+.item p{margin-bottom:10px;}
+.item:hover{background:#fff;}
+.item.active{background:#fff;box-shadow:#e01b07 0px 0px 10px inset;}
+button{margin-right:10px;padding:5px 15px;}
+.slider {
+    height: 16px !important;
+    width: auto;
+    position: relative;
+    background-color: #FFF;
+    margin-bottom: 5px;
+    border:1px solid #aaa;
+}
+.slider .complete {
+    height: 100%;
+    width: auto;
+    color:#333;font-size:10px;line-height:16px;text-align:center;
+    background-color: #ccc;
+    z-index: 2;
+}
+.slider .marker {
+    height: 16px;
+    width: 12px;
+    cursor: pointer;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: #999;
+    z-index: 3;
+}
+#colorPicker{width: 17px;height: 17px;border: 1px solid #CCC;display: inline-block;border-radius: 3px;background-color:rgb(151, 152, 153);box-shadow: 2px 2px 5px #D3D6DA;margin: 0;}
+
+</style>
+</head>
+<body>
+	<p>提示：点击选择想要的图片边框阴影式样后，再点击底部的确认按钮应用效果。</p>
+	<div style="    margin: 10px 0; font-size: 16px;">
+		
+		颜色：<div style="display:inline-block;line-height: 0em;vertical-align: text-bottom;"><div id="colorPicker"></div></div>
+		<span style="vertical-align: top;">圆角：</span> <input type="hidden" id="img-radius" placeholder="如20px;">
+		<div class="_imgradius slider" style="display:inline-block;height:16px;margin-bottom:5px;width: 200px;    vertical-align: middle;">
+			<span id="radius-width" style="float:right;z-index: 5;color: #999;line-height: 16px;font-size: 10px;">0px</span>
+		</div>
+		<span style="font-size:14px;">（提示：拖动调整圆角大小）</span>
+	 </div>
+	
+
+	<div id="img-dialog-content" style="padding:0;height:360px;overflow-y:auto;">
+		
+		
+	</div>
+<div style="text-align:center;margin-top:15px;">
+	     	<button type="button" onclick="applyParagraph('active');" class="btn btn-primary" data-dismiss="modal">应用到当前图片</button>
+	     	<button type="button" onclick="applyParagraph('all');" class="btn btn-warning" data-dismiss="modal">应用到全文所有图片</button>
+	     	<button type="button" onclick="dialog.close(false);" class="btn btn-warning" data-dismiss="modal">取消</button>
+	     </div>
+<script>	
+	
+var rules = [
+	{'css':{'border':'0 none'},'name':'无边框'}
+	,{'css':{'border':'2px dashed rgb(151, 152, 153)','padding':'5px'},'name':'虚线边框'}
+	,{'css':{'border':'2px dotted rgb(151, 152, 153)','padding':'5px'},'name':'点边框'}
+	
+	,{'css':{'box-shadow':'rgb(151, 152, 153) 3.53553px 3.53553px 8px','margin':'0 8px 8px 0'},'name':'右下阴影'}
+	,{'css':{'box-shadow':'rgb(151, 152, 153) -0.2em -0.2em 0.8em','margin':'0.5em 0px 0px 0.5em'},'name':'左上阴影'}
+	,{'css':{'border':'1px solid rgb(151, 152, 153)','border-radius':'2px','padding':'10px','box-shadow':'rgb(151, 152, 153) 0px 0px 6px'},'name':'四周边框四周阴影'}
+	,{'css':{'border':'1px solid rgb(151, 152, 153)','box-shadow':'rgb(151, 152, 153) 2px 2px 5px','padding':'10px'},'name':'四周边框右下阴影'}
+	,{'css':{'-webkit-box-reflect':'below 0px -webkit-gradient(linear, 0% 0%, 0% 100%, from(transparent), color-stop(0.7, transparent), to(rgba(250, 250, 250, 0.298039)))','margin-bottom':'60px;'},'name':'倒影'}
+	
+	,{'css':{'-webkit-mask':'-webkit-gradient(linear, 0% 0%, 0% 100%, from(rgb(0, 0, 0)), to(rgba(0, 0, 0, 0)))'},'name':'底部虚化'}
+	,{'css':{'-webkit-mask':'-webkit-gradient(linear, 0% 100%, 0% 0%, from(rgb(0, 0, 0)), to(rgba(0, 0, 0, 0)))'},'name':'顶部虚化'}
+	,{'css':{'-webkit-mask':'-webkit-gradient(linear, 0% 0%, 100% 0%, from(rgb(0, 0, 0)), to(rgba(0, 0, 0, 0)))'},'name':'右部虚化'}
+	,{'css':{'-webkit-mask':'-webkit-gradient(linear, 100% 0%, 0% 0%, from(rgb(0, 0, 0)), to(rgba(0, 0, 0, 0)))'},'name':'左部虚化'}
+	,{'css':{'box-shadow':'0px 0px 10px rgb(151, 152, 153) inset','border':'1px solid rgb(151, 152, 153)','padding':'4px'},'name':'内阴影'}
+	,{'css':{'box-shadow':'0px 0px 10px rgb(151, 152, 153)','border':'1px solid rgb(151, 152, 153)'},'name':'外阴影'}
+	,{'css':{'border':'3px solid rgb(151, 152, 153)'},'name':'实线边框'}
+	,{'css':{'box-shadow':'0 0 5px 5px rgb(151, 152, 153)'},'name':'宽阴影'}
+	,{'css':{'border-width':'10px','border-color':'rgb(151, 152, 153) rgb(235, 234, 225) rgb(235, 234, 225) rgb(151, 152, 153)','border-style':'solid','box-sizing':'border-box'},'name':'双色边框'}
+	,{'css':{'border-style':'solid','border-left-color':' rgb(117,117,117)','border-right-color':' rgb(117,117,117)','border-top-color':'rgb(33,33,33)','border-bottom-color':' rgb(33,33,33)','border-width':'15px','padding':'2px 2px','line-height':'0em'},'oprate':'parent','name':'相框边框'}
+
+	,{'css':{'border-style':'solid','border-width':'2px','border-color':'rgb(151, 152, 153)','padding':'10px 15px','background-image':'repeating-linear-gradient(-45deg, transparent, transparent 1px, rgb(254, 254, 254) 2px, rgb(254, 254, 254) 7px)','background-color':'rgb(151, 152, 153)','line-height':'0em'},'oprate':'parent','name':'斜线边框'}
+	,{'css':{'border-style':'solid','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz/yqVAqoZvDibGrw7YnPZHOj5s8ULibmKMHd1ibqsSibO4XUks8wYAbjrxbs9feOkO2Q53c7b1mgKwiaNvJLwUrGcp0mg/0?wx_fmt=png) 15 repeat','border-width':'15px','line-height':'0em'},'oprate':'parent','name':'锯齿边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://image2.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpel9wbmcvWVV5WjdBT0wzb21QbjM5MmZoVjd6MGZoTElpY3lWMDFwazI0SmJIcGJjVU03Y05ERk5ZVW56enlIRk4wQ0VPaWJwekh6Z3dwclRGM1Q0YVN2bm9lQVFMZy8wP3d4X2ZtdD1wbmc=) 60','line-height':'0em'},'oprate':'parent','name':'对角边框'}
+
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/ianq03UUWGmIebdcoXye6usZhicPNzpEicrWicckqvjqBlF5EpbU8tJkyAtTmMQZ2ibk73uics6BdNxPdf4rbjE5M0wg/0?wx_fmt=png) 30 fill','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/ianq03UUWGmJjUVsLldsQyMMJy7p0rviazYUENd7KNlSqnWRbBZeXtwfAgyBwj9xVd1Rx1oypdUB26Su9f5sFPOg/0?wx_fmt=png) 30 fill stretch','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/fgnkxfGnnkQiccev03JQbn6Z3UBLptFgJHLt3kQIVF9emia79dYsufQ2fRFjlNh1P0ibG9ZOxcr0w5J5Lh6jf1k7g/0?wx_fmt=png) 30','line-height':'0em'},'oprate':'parent','name':'相框边框'}
+	
+	,{'css':{'border':'10px solid transparent','background-color':'rgb(151, 152, 153)','-webkit-border-image':'url(http://image2.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpel9wbmcvdU4xTElhdjdvSmljaWJiZXA5UzR1Wm9EVDlhMUdWajA0ZGFvREtZZ0N5OHVINVQycnpMdWVOd1hpY3NHMzBYanFGR09CaWJPQ2dIdW1PUndJWVVxZzJNTGR3LzA/d3hfZm10PXBuZw==) 35 repeat','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','background-color':'rgb(151, 152, 153)','-webkit-border-image':'url(http://image2.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpel9wbmcvdU4xTElhdjdvSmljaWJiZXA5UzR1Wm9EVDlhMUdWajA0ZDJkbzAzQjA0ZHRkS1lDQkh3clVic1YzdGp5TzhrMTJhMDRwRFI0WXVZa0tVS2F0Y0VDYUdCQS8wP3d4X2ZtdD1wbmc=) 35 repeat','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+
+	,{'css':{'border':'15px solid transparent','-webkit-border-image':'url(http://image2.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpel9wbmcvdU4xTElhdjdvSjhXazVjWmJ4bjlrQ0g4aWJ1Nm81aWNDZ2EzcWROZlY5ZFlxblBUdWljaWM3SmRRV1dTVWliMzVvUmwyejAwYWFpYjhXN1YyYmMxd0t0aklyT0EvMD93eF9mbXQ9cG5n) 45 60 60 45','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://image2.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpel9wbmcvdU4xTElhdjdvSmliMFNQWWd2V3NwNGlhUDdWQWliRWxhSno3cEpZaWNMR1lkVUhySGpDVVpZSko0TnZnWmNHSGpvRVc4bTR6M0plenpaVWZUWjRVMzZyS29RLzA/d3hfZm10PXBuZw==) 25 repeat','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://image2.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpel9wbmcvdU4xTElhdjdvSmliMFNQWWd2V3NwNGlhUDdWQWliRWxhSnpiNVExUGVyMlNaTkppY2FqS1gycDFWZ01zd2psOWhOVTlKa001NFhhTVVQdGljYXh0VXJYRzJKUS8wP3d4X2ZtdD1wbmc=) 40 fill','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/uN1LIav7oJ9qofnqDzkcxuPDibhXiaUnyyLicJAYz1FLicIL3LULHiayBMS4libsuvxM3iadia2ekBVe7ZextCo7515L0A/0?wx_fmt=png) 35 stretch','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/fgnkxfGnnkRPuGcGCxm5oxkeb2m0jSmqicbYfOjZ1v0aZ1o7cHcGP7YlgLUcPoEdlhj8IBCYgJDFTBxF1SVANYA/0?wx_fmt=png) 28','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/fgnkxfGnnkR2zrVHxbiaF9NiaSZYicztAltibXDibSAs2LGWWFnC5NrSibqB7lsDuR66ZA1lI19p1MBDT8gOgLYcnmcA/0?wx_fmt=png) 15 21','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/fgnkxfGnnkQkLJv64s12hZPl6lWeKCQaibTYYdZficgOquibjM9cChm2C5F3k6g6Iduia2rqbEic5CfpQ1YUWOz8z2A/0?wx_fmt=png) 30','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/fgnkxfGnnkQkLJv64s12hZPl6lWeKCQaSIxtnV3qeskm0mRdEuydWgYyZ5biaw6masxwwbO59UFskVvvia16JC7Q/0?wx_fmt=png) 35','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-box-shadow':'5px 5px 5px #ccc','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/fgnkxfGnnkQIJuUnxqKG3icYslYianzhEyibtwu8gRGvd5oqWxBy7ibib38LcxbNhREpPbWCPAW1t83Ciaq0Z0hV585w/0?wx_fmt=png) 15','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+
+	,{'css':{'border':'15px solid transparent','padding':'5px','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_gif/fgnkxfGnnkRR2K0mLhmx9ZScsjl5n4LZavmFwny3J8H2ZyrXL7KJzxgqwjrnRJMXrAZcWyP7hfeOmUztL4jbdg/0?wx_fmt=gif) 60 fill','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','padding':'2px','-webkit-border-image':'url(http://mpt.135editor.com/mmbiz_png/ianq03UUWGmKullCrRIic52EYrRuq6P3Y7ia5SKicsZqHPggC8GDltbmdDHGdfZbh0X5RthmibZjNurM0yWfIyKyzQg/0?wx_fmt=png) 80 70 fill','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+
+	,{'css':{'border':'15px solid transparent','-webkit-border-image':'url("http://mpt.135editor.com/mmbiz_png/yqVAqoZvDibEYxl9knuOXFXwiadNvHqtEplu3Uic5fuiaDwx17Uco2vCgiaOJpAC8KyfvgHSxibfRibPbeX2hp2aaLicGw/0?wx_fmt=png") 50 fill','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url("http://mpt.135editor.com/mmbiz_png/cZV2hRpuAPgyRpmMvAYP0GIuibuNfykj4Tiay88UbCCSSSrCLvL06d4S7EESuia3naW6539RlAEIggq8K05YT9lug/0?wx_fmt=png") 40 repeat','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	,{'css':{'border':'10px solid transparent','-webkit-border-image':'url("http://mpt.135editor.com/mmbiz_png/cZV2hRpuAPgyRpmMvAYP0GIuibuNfykj4rBws6j6a6LQk8Olfo97IOOVotVO3TgOpeKlFZ9KVicqpREAUibAaibicSw/0?wx_fmt=png") 40 repeat','line-height':'0em'},'oprate':'parent','name':'图片边框'}
+	
+];
+var lastColor = 'rgb(151, 152, 153)';
+	function updateBorderColor(color){
+		console.log(color);
+		$('#img-dialog-content .item').each(function(){
+			$G("colorPicker").style.backgroundColor = color;
+			var obj = $(this).find('img:first');
+
+			var parent = $(obj).parent();
+			if(parent.attr('data-role')=='width' || parent.attr('data-role')=='circle' || parent.attr('data-role')=='square' || parent.attr('data-role')=='bgmirror'){			
+				obj = parent;
+			}
+			else if( parent.hasClass('._135editor') ) {
+				obj = parent;
+			}
+			var style = obj.attr('style');
+			style = style.replace(lastColor,color).replace(lastColor,color);
+			obj.attr('style',style);
+			console.log(style);
+		});
+		lastColor = color;
+	}
+
+    /* 初始化颜色选择器 */
+    function initColorPicker() {
+        var me = editor,
+            cp = $G("colorPicker");
+
+        /* 生成颜色选择器ui对象 */
+        var popup = new UE.ui.Popup({
+            content: new UE.ui.ColorPicker({
+                noColorText: me.getLang("clearColor"),
+                editor: me,
+                onpickcolor: function (t, color) {
+                    updateBorderColor(color);
+                    UE.ui.Popup.postHide();
+                },
+                onpicknocolor: function (t, color) {
+                    updateBorderColor(color);
+                    UE.ui.Popup.postHide();
+                }
+            }),
+            editor: me,
+            onhide: function () {
+            }
+        });
+
+        /* 设置颜色选择器 */
+        domUtils.on(cp, "click", function (e) {
+			popup.content.color = $(e.target).css('background-color') || '';
+            popup.showAnchor(this);
+        });
+        domUtils.on(document, 'mousedown', function (evt) {
+            var el = evt.target || evt.srcElement;
+            UE.ui.Popup.postHide(el);
+        });
+        domUtils.on(window, 'scroll', function () {
+            UE.ui.Popup.postHide();
+        });
+    }
+
+(function () {
+
+	initColorPicker();
+
+	var $img;
+	var img = editor.selection.getRange().getClosedNode();
+	if (img && img.tagName && img.tagName.toLowerCase() == 'img') {
+		$img = $(img).clone();
+		dialog.anchorEl = img;
+	}
+	else{
+		$img = $('<img src="http://image3.135editor.com/cache/remote/aHR0cHM6Ly9tbWJpei5xbG9nby5jbi9tbWJpei96aWFkRERReGJDSkhpYWx2VzhDaWNodmlhY2RoWGliT2JiWmdWYmczOHl3cnBJN0FmcnFWaGVoZjdKczBPRVFDMzFCOHNPQ2pkdWJHTlVCaWF6c3NyQk9mNjZYdy8wP3d4X2ZtdD1qcGVn">');
+	}
+
+	var src = $img.attr('src');
+
+	for(var i in rules) {
+		var $newImg = $img.clone().removeAttr('style');
+
+		if(rules[i].oprate == 'circle') {
+			$newImg = $('<section class="_135editor" data-role="circle" style="border-radius: 100%;overflow: hidden;margin: 0 auto;width:100%;padding-bottom:100%;height:0px;background-image:url('+src+');background-position:50% 50%;background-size: cover;"><img src="'+src+'" style="opacity:0;width:100%;"></section>');
+		}
+		else if(rules[i].oprate == 'parent') {
+			$newImg = $('<section data-role="width" style="display:inline-block;"><img src="'+src+'"></section>');
+		}
+
+
+		for(var cn in rules[i]['css']) {
+			$newImg.css(cn,rules[i]['css'][cn]);		
+		}
+		
+		var img_html = $newImg.prop('outerHTML');
+
+		var html = '<div class="item" data-rule="'+i+'" style="">'
+			+ '<p>'+rules[i]['name']+'</p>'
+			+ img_html
+			+'</div>';
+			
+		$('#img-dialog-content').append(html);
+	}
+
+	$('.item').click(function(){
+		$('.active').removeClass('active');
+		$(this).addClass('active');
+	});
+
+	$('#img-radius').keyup(function(){
+		if($(this).val()) {
+			$('#img-dialog-content img').css('border-radius',$(this).val());
+		}
+	});
+
+
+	var init_width = 0;
+	if ( $img.css('border-radius') ){
+		init_width = parseInt( $img.css('border-radius') );
+	}
+
+	jQuery('._imgradius').attr('data-param-init-value',init_width)	
+		.on('inited',function(e, val){
+	        jQuery(this).find('#radius-width').html(val+'px');
+	        $('#img-radius').val(val+'px').trigger('keyup'); 
+	    })
+		.slider({'initAll':false,'initValue':init_width})
+		.on("change", function(e, val){
+	        // e is event
+	        // val is current value
+	    	var width = val;//parseInt(100*val/100);
+	    	jQuery(this).find('#radius-width').html(width+'px');   
+	    	//p.find('> .layout').eq(0).css('width',width+'px');
+	    	$('#img-radius').val(width+'px').trigger('keyup'); 
+	    });
+	
+})();
+	
+function applyParagraph(type) {
+	var object ;
+	if(type == 'all') {
+		if(!editor.isPaidUser()) {
+			alert('付费的标准会员才能进行应用到全文操作');
+			return;
+		}
+		var editor_document = editor.selection.document;
+		object = $(editor_document).find('img');
+	}
+	else{
+		object = dialog.anchorEl;
+	}
+	if( $('.active').length == 0 ) {
+		alert("请先选择需要的样式");
+	}
+	var idx = $('.active').attr('data-rule') ;
+	$(object).each(function(){
+		if($(this).hasClass('assistant')) {
+			return;
+		}
+		if( rules[idx]['oprate']== 'parent'){
+			$(this).removeAttr('style');
+			var parent = $(this).parent();
+			if(parent.attr('data-role')=='width' || parent.attr('data-role')=='circle' || parent.attr('data-role')=='square' || parent.attr('data-role')=='bgmirror'){
+				parent.attr('style',$('.active').find('img:first').parent().attr('style'));
+			}
+			else{
+				var style = $('.active').find('img').attr('style');
+				var img = $('.active').find('img:first').clone().removeAttr('style');
+				img.attr('src',this.src);
+				var target = $('<section data-role="width">'+img.prop('outerHTML')+'</section>');
+				target.attr('style',$('.active').find('img:first').parent().attr('style'));
+				target.css('display','inline-block');
+				$(this).replaceWith(target);
+			}
+		}
+		else{
+			$(this).attr('style',$('.active').find('img').attr('style'));
+			var parent = $(this).parent();
+			if(parent.attr('data-role')=='width' || parent.attr('data-role')=='circle' || parent.attr('data-role')=='square' || parent.attr('data-role')=='bgmirror'){
+				// 去掉外围边框的样式.仅使用图片的样式
+				parent.replaceWith($(this));
+			}
+		}
+	});
+	dialog.close(false);
+	editor.fireEvent("catchRemoteImage")
+}	
+	
+</script>    
+
+</body>
+</html>

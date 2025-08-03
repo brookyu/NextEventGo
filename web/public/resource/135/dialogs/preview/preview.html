@@ -1,0 +1,78 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <style>
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            background-color: #333 !important;
+        }
+        
+        #preview {
+            width: 100%;
+            min-height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        
+        #preview * {
+            font-family: sans-serif;
+            font-size: 16px;
+        }
+        
+         ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+         ::-webkit-scrollbar-thumb {
+            -webkit-box-shadow: inset 0 0 16px #645654;
+        }
+        
+         ::-webkit-input-placeholder {
+            color: #ddd;
+        }
+    </style>
+    <script type="text/javascript" src="../internal.js"></script>
+    <script src="../../ueditor.parse.js"></script>
+    <title></title>
+</head>
+
+<body class="view">
+
+    <section id="preview-phone" style="width:390px;height: 658px;margin:0px auto;padding: 2px 0;border-radius: 28px;background-color: #333 !important;background-image:url(https://bdn.135editor.com/files/201901/iPhone.png);background-size: 100% 100%;">
+        <p style="text-align:center;margin-top: 95px;font-size:16px;line-height: 2;">135编辑器</p>
+        <section id="preview-body" style="margin: 5px 42px 15px 55px;overflow-x:hidden;overflow-y:auto;height: 485px;width:320px;transform: scale(0.91);-webkit-transform-origin-x: left;    -webkit-transform-origin-y: top;">
+            <section style="margin-bottom:28px;">
+                <p style="margin-bottom: 5px;padding:0;font-size:18px;line-height: 2;">预览，这是文章标题</p>
+                <p style="font-size:14px;color: #8c8c8c;">2017-09-08 &nbsp; <a href="#" style="color: #607fa6;">公众号名称</a> </p>
+            </section>
+            <section id="preview" style="background: #FFF;">
+
+            </section>
+            <p><br></p>
+            <section id="preview-msg-footer">
+                <p style="color: #9c9c9c;">阅读 1000000+ &nbsp;&nbsp; <span style="float:right;margin-right: 10px;"><i
+                            class="fa fa-thumbs-o-up"></i> 好看 1350</span></p>
+            </section>
+        </section>
+    </section>
+
+</body>
+<script>
+    document.getElementById('preview').innerHTML = editor.getContent();
+    uParse('#preview', {
+        rootPath: '../../',
+        chartContainerHeight: 500
+    })
+    dialog.oncancel = function() {
+        document.getElementById('preview').innerHTML = '';
+    }
+</script>
+
+</html>

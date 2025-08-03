@@ -1,0 +1,327 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>ueditor图片对话框</title>
+    <script type="text/javascript" src="../../dialogs/internal.js?v=1532"></script>
+    <!-- jquery -->
+    <script type="text/javascript" src="../../third-party/jquery-3.3.1.min.js"></script>
+    <!-- webuploader -->
+    <script src="../../third-party/webuploader/webuploader.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../third-party/webuploader/webuploader.css">
+    <script type="text/javascript" src="../../third-party/masonry.pkgd.min.js"></script>
+    <script type="text/javascript" src="../../third-party/imagesloaded.pkgd.min.js"></script>
+    <!-- image dialog -->
+    <link rel="stylesheet" href="../../dialogs/image/image.css?v=1569" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../third-party/cropper/cropper.min.css" />
+</head>
+
+<body>
+    <div class="wrapper">
+        <div id="tabhead" class="tabhead">
+            <span class="tab focus" data-content-id="upload"><var id="lang_tab_upload"></var></span>
+            <span class="tab" data-content-id="remote"><var id="lang_tab_remote"></var></span>
+            <span class="tab" data-content-id="crop">裁剪图片1</span>
+            <!-- <span class="tab" data-content-id="online">在线素材库</span> -->
+            <!-- <span class="tab" data-content-id="mine">我的上传</span> -->
+        </div>
+        <div class="alignBar">
+            <label class="algnLabel"><var id="lang_input_align"></var></label>
+            <span id="alignIcon">
+        <span id="noneAlign" class="none-align" data-align="none"></span>
+            <span id="leftAlign" class="left-align" data-align="left"></span>
+            <span id="rightAlign" class="right-align" data-align="right"></span>
+            <span id="centerAlign" class="center-align focus" data-align="center"></span>
+            </span>
+            <input id="align" name="align" type="hidden" value="none" />
+        </div>
+        <div id="tabbody" class="tabbody">
+            <div id="mine" class="panel" style="overflow-y:auto;"></div>
+            <div id="crop" class="panel">
+                <div id="cropper-upload" style="text-align: right;">
+                    <div>
+                        <div class="modal-content">
+                            <div class="modal-body" style="overflow: hidden;padding: 0;margin: 10px;text-align:left;">
+                                <div style="border:0 none;text-align: left;">
+                                    <h4>选择图片后，选择宽高比例，裁剪保留区域后上传</h4>
+                                </div>
+                                <div id="crop-ratios" class="btn-group d-flex flex-wrap m-0" data-toggle="buttons">
+                                    <label class="btn btn-light"> <input type="radio" class="sr-only" id="aspectRatio5" name="aspectRatio" value="NaN"> 自由 </label>
+                                    <label class="btn btn-light"> <input type="radio" class="sr-only" id="aspectRatio4" name="aspectRatio" value="2"> 2:1 </label>
+                                    <label class="btn btn-light"> <input type="radio" class="sr-only" id="aspectRatio1" name="aspectRatio" value="1.7777777777777777"> 16:9 </label>
+                                    <label class="btn btn-light"> <input type="radio" class="sr-only" id="aspectRatio2" name="aspectRatio" value="1.8"> 9:5 </label>
+                                    <label class="btn btn-light"> <input type="radio" class="sr-only" id="aspectRatio6" name="aspectRatio" value="1.333333333"> 4:3 </label>
+                                    <label class="btn btn-light"> <input type="radio" class="sr-only" id="aspectRatio3" name="aspectRatio" value="1"> 1:1 </label>
+                                    <label class="btn btn-light active"> <input type="radio" class="sr-only" id="aspectRatio7" name="aspectRatio" value="0.75"> 3:4 </label>
+                                    <label class="btn btn-light"> <input type="radio" class="sr-only" id="aspectRatio8" name="aspectRatio" value="0.5"> 1:2 </label>
+                                    <label class="btn btn-light"> <input type="radio" class="sr-only" id="aspectRatio9" name="aspectRatio" value="0.33333333"> 1:3 </label>
+                                    <label id="aspectRatio10-label" class="btn btn-light active hidden"> <input type="radio" class="sr-only" id="aspectRatio10" name="aspectRatio"> 按传入图片比例 </label>
+                                </div>
+                                <div class="text-left">
+                                    <div style="display: inline-block;">
+                                        <label class="btn btn-primary btn-sm m-0" for="inputImageUploadcrop" title="Upload image file">
+                      <input type="file" class="sr-only inputImage" data-id="#fileuploadinfo_uploadcrop" id="inputImageUploadcrop" name="file" accept=".jpg,.jpeg,.png,.gif,.bmp,.tiff">
+                      <span> ① 选择图片裁剪 </span>
+                    </label>
+                                        <input name="file_url" id="uploadcrop" type="hidden" />
+                                    </div>
+                                    <div id="uploadCropImage" class="btn btn-sm ml-auto btn-primary"> ② 上传 </div>
+                                    <div class="select-cates" style="display:inline-block;vertical-align: sub;"></div>
+                                </div>
+
+                                <div style="height:270px;margin-top:5px;">
+                                    <img id="cropImage" style="max-height:270px !important;max-width: 100% !important;height: 100%;">
+                                </div>
+                                <div class="upload-filelist p-2 d-flex" id="fileuploadinfo_uploadcrop"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- 远程图片 -->
+            <div id="remote" class="panel">
+                <div class="top" style="position: relative;">
+                    <div class="row">
+                        <label for="url"><var id="lang_input_url"></var></label>
+                        <span><input class="text" id="url" type="text" /></span>
+                    </div>
+                    <div style="position: absolute;right:10px;top:0;" id="changeToCrop" class="btn btn-primary" onclick="">裁剪</div>
+                </div>
+                <div class="left">
+                    <div class="row">
+                        <label><var id="lang_input_width"></var></label>
+                        <span><input placeholder="输入整数或者百分比" style="width:130px;margin-left: 0px;margin-right: 5px" class="text" type="text" id="width" />px</span>
+                        <label style="display:none;"><input id="lock" type="checkbox" disabled="disabled"><span id="lockicon"></span></label>
+                    </div>
+                    <!-- <div class="row">
+            <label><var id="lang_input_border"></var></label>
+            <span><input class="text" type="text" id="border"/>px
+            </span>
+          </div> -->
+                    <div class="row">
+                        <label>外边距：</label>
+                        <span><input class="text" type="text" id="vhSpace" placeholder="请输入外边距数值，默认单位为em" /> </span>
+                    </div>
+                    <div class="row">
+                        <label>透明度：</label>
+                        <span><input class="text" style="color:red;" placeholder="0,1或之间小数，0为完全透明，1为不透明 " type="text" id="opacity" /> </span>
+                    </div>
+                    <div id="image-mapurl" class="row" style="font-weight:bold;color:red;display:none;">
+                        <label>热点链接</label>
+                        <!-- 链接不再支持，被微信过滤了 -->
+                        <span><input class="text" title="热点链接微信不支持" type="text" style="width:180px" id="mapurl" /></span>
+                    </div> <input class="text" type="hidden" id="title" /> <input class="text" type="hidden" id="vhSpace" /> <input class="text" type="hidden" id="height" /> <input class="text" type="hidden" id="border" />
+                </div>
+                <div class="right">
+                    <div id="preview"></div>
+                </div>
+            </div>
+            <!-- 上传图片 -->
+            <div id="upload" class="panel focus">
+                <div id="queueList" class="queueList">
+                    <div class="statusBar element-invisible">
+                        <div class="progress">
+                            <span class="text">0%</span>
+                            <span class="percentage"></span>
+                        </div>
+                        <div class="info"></div>
+                        <div class="btns">
+                            <!--<div style="line-height: 16px;display:inline-block;float:right;text-align:right;">
+                <label style="color:red;" title="设置了水印参数后才能生效"><input style="float:left;margin-top:4px;" type="checkbox" checked="checked" id="watermark-flag" />自动加水印</label><br />
+                <a target="_blank" href="//www.135editor.com/user_settings/setting">设置水印</a>
+              </div>
+              <a href="//www.135plat.com/wxes/pauth" target="_blank" style="display:inline-block;float:right;padding: 0px 5px;border-radius: 3px;height: 32px; text-decoration: none; background: #dd5600;margin: 0 5px;color: #FFF;font-size: 14px;font-weight: bold;">公众号授权</a> -->
+                            <div id="filePickerBtn"></div>
+                            <div class="select-cates" style="display:inline-block;float:left;"></div>
+                            <div class="uploadBtn"><var id="lang_start_upload"></var></div>
+                        </div>
+                    </div>
+                    <div id="dndArea" class="placeholder">
+                        <!-- <div style="display: flex;flex-direction: column;align-items: center;position:absolute;color:#000;font-size:14px;padding:10px;top:0;width:920px;">
+              <div style="margin-bottom: 10px;">
+                如果您需要将上传的图片私有化，
+                请点击链接注册<a style="font-size:14px;color:#ff793f;" href="https://promotion.aliyun.com/ntms/yunparter/invite.html?userCode=o7a5fkn0" target="_blank"> 阿里云 </a>、<a style="font-size:14px;color:#ff793f;" href="https://console.bce.baidu.com/agent/#/agent/bind~token=542b0e999ffb081156e861edc94a45400668ec6a11e9ef92134cabd09e4937f8&enable_im=1" target="_blank" title="百度云更优惠">百度云 </a>、<a style="font-size:14px;color:#ff793f;" href="https://partners.cloud.tencent.com/invitation/2703089335959ec4ec0e37" target="_blank"> 腾讯云 </a>或者<a style="font-size:14px;color:#ff793f;" href="https://portal.qiniu.com/qvm/active?code=1380775816T1m5" target="_blank" title="同阿里云服务器，95折价格"> 七牛云 </a>，并联系客服</div>
+              <div id="upload-status" style="display: inline-block;width:650px;background: #eee;height: 20px;border-radius: 3px;position: relative;text-align: center;margin: 3px;">
+                <div id="upload-percent" style="position: absolute;width:1%;border-radius: 3px;background:#ff793f;height: 20px;"></div>
+              </div>
+              <div style="font-size:14px;color:#888;width: 650px;display:  flex;justify-content: space-between;margin-top: 10px">
+                <div>已上传图片数量：<span id="upload-percent-text" style="font-size: 14px;color:#888;line-height: 20px;width: 100%;left: 0;">0/100</span></div>
+                <div><div class="select-cates" style="display:inline-block;"></div><a style="font-size:14px;color:#ff793f;" href="/user_cates/mine?model=Uploadfile" target="_blank">管理上传分类</a></div>
+                <div><a style="font-size:14px;color:#ff793f;" href="/charge-service.html?trackid=2&source=upload_dialog" target="_blank">升级VIP扩大上传数量</a></div>
+              </div>
+            </div> -->
+                        <div style="height:60px;font-size: 14px">
+                            <div class="filePickerContainer">
+                                <div id="filePickerReady" class="webuploader-container" style="display: inline-block; min-width: 168.002px;height: 43.6364px;vertical-align: top;background: #ff793f;border-radius: 5px;box-shadow: 0 1px 1px rgba(0, 0, 0, 0.1);">
+                                </div>
+                                <div class="webuploader-pick" id="btn-crop-upload" style="display: inline-block;border-radius: 5px;background: #ff793f;">裁剪上传</div>
+                                <!-- <div class="webuploader-pick" onclick="parent.meitu_upload(function(){dialog.close(false);});dialog.close();" style="display: inline-block;border-radius: 5px;background: #ff793f;">美化上传</div>
+                <div class="webuploader-pick" onclick="parent.pingtu_upload(function(){dialog.close(false);});dialog.close();" style="display: inline-block;border-radius: 5px;background: #ff793f;">拼接上传</div> -->
+                            </div>
+                        </div>
+                        <!-- <p style="display:flex;justify-content:center;">
+              <a style="color:#000;display: flex;justify-items: safe;align-items:  center;line-height: 44px;padding: 0 60px;margin: 10px;border-radius: 5px;border: 1px solid #e7e4e4;" target="_blank" href="//www.135editor.com/user_settings/setting">
+                <image src="images/stamp.png" style="height: 15px;margin-right: 15px;"></image>水印设置
+              </a>
+              <a style="color:#000;display: flex;justify-items: safe;align-items:  center;line-height: 44px;padding: 0 60px;margin: 10px;border-radius: 5px;border: 1px solid #e7e4e4;" target="_blank" href="http://vpeitu.com/?trackid=1" onclick="_hmt.push(['_trackEvent', 'beauty-page', 'click', 'vpeitu'])">
+                <image src="images/pic.png" style="height: 20px;margin-right: 15px;"></image>快速配图
+              </a>
+            </p> -->
+                        <div style="margin-top:10px;margin-bottom:10px;font-size:14px;text-align: left;margin-left: 200px;"><strong>通知：</strong>
+                            <p style="color: #888">1. 请勿上传过于性感、暴露、色情、小说、恐怖、诱导、黑五类等违规图片，</p>
+                            <p style="color: #888">2. 图片请勿大量外链使用（微信不受影响），外链使用推荐进行图片私有化，</p>
+                            <p style="color: #888">3. 推荐所有企业用途的进行图片私有化，</p>
+                            <p style="color: #888">4. 如发现违规使用图片，系统将进行封禁与删除处理。</p>
+                        </div>
+                    </div>
+                    <ul class="filelist element-invisible">
+                        <li id="filePickerBlock" class="filePickerBlock"></li>
+                    </ul>
+                </div>
+            </div>
+            <!-- 在线图片 -->
+            <div id="online" class="panel">
+                <div id="remote-links" style="padding-left:10px;">
+                    <a href="#" class="focus" data-type="all">全部</a>
+                    <!-- <a href="#" data-type="favor">收藏</a> -->
+                    <a href="#" data-type="split">分隔线</a>
+                    <a href="#" data-type="guide">引导图</a>
+                    <a href="#" data-type="bg">背景图</a>
+                    <a href="#" data-type="bggif">动态背景</a>
+                    <a href="#" data-type="festival">节假日</a>
+                </div>
+                <div id="imageList"><var id="lang_imgLoading"></var></div>
+            </div>
+            <!-- 搜索图片 -->
+            <!-- <div id="search" class="panel">
+        <div class="searchBar">
+          <input id="searchTxt" class="searchTxt text" type="text" />
+          <select id="searchType" class="searchType">
+            <option value="&s=4&z=0"></option>
+            <option value="&s=1&z=19"></option>
+            <option value="&s=2&z=0"></option>
+            <option value="&s=3&z=0"></option>
+          </select>
+          <input id="searchReset" type="button" />
+          <input id="searchBtn" type="button" />
+        </div>
+        <div id="searchList" class="searchList">
+          <ul id="searchListUl"></ul>
+        </div>
+      </div> -->
+        </div>
+    </div>
+    <script type="text/javascript" src="./image.js?v=1540"></script>
+    <script type="text/javascript" src="../../third-party/cropper/cropper.min.js"></script>
+    <script type="text/javascript" src="../../third-party/cropper/jquery-cropper.min.js"></script>
+    <script>
+        window.image = document.getElementById('cropImage');
+        window.cropper = null;
+        window.options = {
+            aspectRatio: 1 / 1,
+            viewMode: 0,
+            autoCropArea: 0.9,
+            preview: '.img-preview',
+            ready: function(e) {
+                console.log(e.type);
+            }
+        };
+        var uploadedImageType = 'image/jpeg';
+        var uploadedImageName = 'cropped.jpg';
+        var uploadedImageURL;
+        var FileListId;
+        if (URL) {
+            $('.inputImage').change(function() {
+                FileListId = $(this).data('id');
+                $('#cropper-upload').show();
+                var files = this.files;
+                var file;
+                if (files && files.length) {
+                    file = files[0];
+                    if (/^image\/\w+/.test(file.type)) {
+                        uploadedImageType = file.type;
+                        uploadedImageName = file.name;
+                        if (uploadedImageURL) {
+                            URL.revokeObjectURL(uploadedImageURL);
+                        }
+                        image.src = uploadedImageURL = URL.createObjectURL(file);
+                        if (cropper) {
+                            cropper.destroy();
+                        }
+                        setTimeout(function() {
+                            cropper = new Cropper(image, options);
+                        }, 200);
+                        this.value = null;
+                    } else {
+                        window.alert('Please choose an image file.');
+                    }
+                }
+            });
+        }
+        $(function() {
+            var range = editor.selection.getRange();
+            if (!range.collapsed) {
+                var img = range.getClosedNode();
+                if (img && img.tagName == 'IMG') { //选区为图片则切换图片地址
+                    $('#crop-ratios .btn').removeClass('active');
+                    $('#aspectRatio10-label').removeClass('hidden').show().addClass('active');
+                    $(img).attr('data-ratio', parseInt(img.height) / parseInt(img.width));
+                    $('#aspectRatio10').val(parseInt(img.width) / parseInt(img.height));
+                    options['aspectRatio'] = parseInt(img.width) / parseInt(img.height);
+                    image.src = img.src;
+                }
+            }
+            $('#uploadCropImage').click(function() {
+                result = cropper['getCroppedCanvas']({
+                    "maxWidth": 1200,
+                    "maxHeight": 4096
+                });
+                var postdata = {};
+                postdata[editor.getOpt('imageFieldName')] = result.toDataURL(uploadedImageType).replace(/data:image\/(png|jpeg|jpg);base64,/, '');
+                var actionUrl = editor.getActionUrl('uploadscrawl') + '&appkey=' + editor.getOpt('appkey'),
+                    prefix = editor.getOpt('snapscreenUrlPrefix') || '';
+                $.ajax({
+                    type: "POST",
+                    url: actionUrl,
+                    data: postdata,
+                    dataType: "json",
+                    success: function(data) {
+                        if (data.url) {
+                            data.url = prefix + data.url
+                            var range = editor.selection.getRange();
+                            if (!range.collapsed) {
+                                var img = range.getClosedNode();
+                                if (img && img.tagName == 'IMG') { //选区为图片则切换图片地址
+                                    img.src = data.url;
+                                    img.setAttribute('_src', data.url);
+                                    var p = $(img).parent();
+                                    if (p.attr('data-role') == 'circle' || p.attr('data-role') == 'bgmirror' || p.attr('data-role') == 'square') {
+                                        p.css('backgroundImage', 'url(' + data.url + ')');
+                                    }
+                                    dialog.close();
+                                    return;
+                                }
+                            }
+                            editor.execCommand('insertHtml', '<img src="' + data.url + '">')
+                            dialog.close();
+                        } else if (data.state) {
+                            alert(data.state);
+                        }
+                    }
+                });
+            })
+            $('#crop-ratios input:radio').change(function() {
+                $('#crop-ratios .btn').removeClass('active');
+                $(this).parent('.btn').addClass('active');
+                options[this.name] = this.value;
+                if (cropper) {
+                    cropper.destroy();
+                }
+                cropper = new Cropper(image, options);
+            });
+        })
+    </script>
+</body>
+
+</html>

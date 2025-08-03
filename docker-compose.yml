@@ -1,0 +1,234 @@
+version: '3.8'
+
+services:
+  # NextEvent Go Application
+  nextevent-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5008:5008"
+      - "5009:5009"
+    environment:
+      # Application Configuration
+      - APP_ENVIRONMENT=development
+      - APP_SELF_URL=http://localhost:5008
+      - APP_IS_DEVELOPMENT=true
+      
+      # Server Configuration
+      - SERVER_PORT=5008
+      - SERVER_HOST=0.0.0.0
+      - SERVER_HTTPS_PORT=5009
+      - SERVER_BASE_URL=http://localhost:5008
+      - SERVER_MODE=development
+      
+      # Database Configuration (matching .NET ConnectionStrings.Default)
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=NextEventDB6
+      - DB_USERNAME=root
+      - DB_PASSWORD=~Brook1226,
+      - DB_CHARSET=utf8mb4
+      
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=mypassword
+      - REDIS_DATABASE=1
+      
+      # JWT Configuration (matching .NET Jwt section)
+      - JWT_SECRET=dzehzRz9a8asdfasfdadfasdfasdfafsdadfasbasdf=
+      - JWT_ISSUER=ZenTeamNextEvent
+      - JWT_AUDIENCE=ZenTeamNextEvent
+      - JWT_EXPIRATION=24
+      
+      # WeChat Configuration (matching .NET Wx section)
+      - WECHAT_PUBLIC_ACCOUNT_APP_ID=wx9be741fb80d04fb9
+      - WECHAT_PUBLIC_ACCOUNT_APP_SECRET=5e12e8a8f9b4e25e934b41c2a71b030b
+      - WECHAT_PUBLIC_ACCOUNT_TOKEN=brook1226
+      - WECHAT_PUBLIC_ACCOUNT_AES_KEY=2q4bzKQpWMywVriwWjPrnFGMlDzn5F2awp1QSCxSs3h
+      - WECHAT_MINI_PROGRAM_APP_ID=wxc320e6056994506c
+      - WECHAT_MINI_PROGRAM_APP_SECRET=75f7b7e786296426c8cefdb5d39f2387
+      
+      # Message Queue Configuration (matching .NET Cap section)
+      - MESSAGE_QUEUE_ENABLED=true
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      
+      # Email Configuration (matching .NET Settings section)
+      - SMTP_HOST=smtp.qq.com
+      - SMTP_PORT=587
+      - SMTP_USERNAME=brookyu@qq.com
+      - SMTP_PASSWORD=pejprdsamnjicaci
+      - SMTP_FROM_ADDRESS=brookyu@qq.com
+      - SMTP_FROM_NAME=样品索取
+      - SMTP_RECEIVER=brookyu@qq.com
+      
+      # Media Configuration
+      - MEDIA_BASE_URL=https://secure.zenteamserver.com
+      - MEDIA_TEMP_DIR=/tmp/nextevent
+      
+      # WeChat Server Configuration
+      - WECHAT_SERVER_BASE_URL=http://s2yms.zenteamserver.com
+      
+      # Live Streaming Configuration
+      - LIVE_PLAYER_URL=http://localhost:3000
+      - CAST_SERVER_URL=http://cast.colorcon.wemakecrm.com
+      
+      # CORS Origins (matching .NET App.CorsOrigins)
+      - CORS_ORIGINS=https://*.colorcon.com.cn,https://*.NextEvent.com,http://localhost:4200,http://localhost:3000,http://localhost:3100,http://127.0.0.1:29597,http://192.168.10.208:3000
+      
+      # Feature Flags
+      - FEATURE_ANALYTICS_ENABLED=true
+      - FEATURE_WECHAT_INTEGRATION_ENABLED=true
+      - FEATURE_ELASTICSEARCH_ENABLED=false
+      - FEATURE_EMAIL_ENABLED=true
+      - FEATURE_FILE_UPLOAD_ENABLED=true
+      - FEATURE_LIVE_STREAMING_ENABLED=true
+      
+      # Logging Configuration (matching .NET Serilog section)
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
+      - LOG_OUTPUT=stdout
+    depends_on:
+      - mysql
+      - redis
+      - rabbitmq
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+      - ./qrcodes:/app/qrcodes
+    networks:
+      - nextevent-network
+    restart: unless-stopped
+
+  # MySQL Database (matching .NET ConnectionStrings.Default)
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=~Brook1226,
+      - MYSQL_DATABASE=NextEventDB6
+      - MYSQL_USER=nextevent
+      - MYSQL_PASSWORD=nextevent123
+      - MYSQL_CHARSET=utf8mb4
+      - MYSQL_COLLATION=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/mysql:/docker-entrypoint-initdb.d
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+    networks:
+      - nextevent-network
+    restart: unless-stopped
+
+  # Redis (matching .NET Redis section)
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass mypassword --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - nextevent-network
+    restart: unless-stopped
+
+  # RabbitMQ (matching .NET Cap.RabbitMq section)
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+      - RABBITMQ_DEFAULT_VHOST=/
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - nextevent-network
+    restart: unless-stopped
+
+  # ElasticSearch (matching .NET ElasticSearch section - optional)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.8.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - nextevent-network
+    restart: unless-stopped
+    profiles:
+      - elasticsearch
+
+  # Kibana (optional)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.8.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - nextevent-network
+    restart: unless-stopped
+    profiles:
+      - elasticsearch
+
+  # Consul (matching .NET Consul section - optional)
+  consul:
+    image: consul:1.15
+    command: consul agent -dev -client=0.0.0.0 -ui
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    volumes:
+      - consul_data:/consul/data
+    networks:
+      - nextevent-network
+    restart: unless-stopped
+    profiles:
+      - consul
+
+  # Nginx (for production-like setup)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./uploads:/var/www/uploads
+    depends_on:
+      - nextevent-api
+    networks:
+      - nextevent-network
+    restart: unless-stopped
+    profiles:
+      - nginx
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
+  elasticsearch_data:
+  consul_data:
+
+networks:
+  nextevent-network:
+    driver: bridge

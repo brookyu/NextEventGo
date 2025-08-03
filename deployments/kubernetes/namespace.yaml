@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nextevent-production
+  labels:
+    name: nextevent-production
+    environment: production
+    app: nextevent
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nextevent-staging
+  labels:
+    name: nextevent-staging
+    environment: staging
+    app: nextevent
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nextevent-monitoring
+  labels:
+    name: nextevent-monitoring
+    environment: production
+    app: nextevent-monitoring
