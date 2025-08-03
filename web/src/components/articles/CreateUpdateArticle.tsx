@@ -70,6 +70,7 @@ import {
 } from '@/components/ui/alert';
 
 import Real135Editor from './Real135Editor';
+import Improved135Editor from './Improved135Editor';
 import ImageSelector from '../images/ImageSelector';
 import { articlesApi, categoriesApi, type Article, type Category, type CreateArticleRequest, type UpdateArticleRequest } from '@/api/articles';
 import { imagesApi } from '@/api/images';
@@ -637,31 +638,18 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                   <div className="h-full">
                     {/* Only render editor after article is loaded in edit mode, or immediately in create mode */}
                     {(mode === 'create' || (mode === 'edit' && article)) ? (
-                      editorType === 'real135' ? (
-                        <Real135Editor
-                          ref={editorRef}
-                          content={watchedContent}
-                          onChange={handleContentChange}
-                          style={{ height: '100%' }}
-                          className="h-full"
-                          config={{
-                            initialFrameHeight: 600,
-                            autoHeightEnabled: false,
-                            scaleEnabled: false,
-                          }}
-                        />
-                      ) : (
-                        <Real135Editor
-                          content={watchedContent}
-                          onChange={handleContentChange}
-                          className="h-full"
-                          config={{
-                            initialFrameHeight: 600,
-                            autoHeightEnabled: false,
-                            scaleEnabled: false,
-                          }}
-                        />
-                      )
+                      <Improved135Editor
+                        ref={editorRef}
+                        content={watchedContent}
+                        onChange={handleContentChange}
+                        height="600px"
+                        className="h-full"
+                        config={{
+                          initialFrameHeight: 600,
+                          autoHeightEnabled: false,
+                          scaleEnabled: false,
+                        }}
+                      />
                     ) : (
                       <div className="h-full flex items-center justify-center border border-gray-300 rounded-md">
                         <div className="text-center">
