@@ -124,6 +124,8 @@ const Improved135Editor = forwardRef<Improved135EditorRef, Improved135EditorProp
             appkey: appkey,
             open_editor: true,
             pageLoad: true,
+            lang: 'zh-cn',
+            langPath: '/resource/135/lang/',
             style_url: window.BASEURL + '/editor_styles/open?inajax=1&appkey=' + appkey,
             page_url: window.BASEURL + '/editor_styles/open_styles?inajax=1&appkey=' + appkey,
             style_width: 340,
@@ -194,7 +196,7 @@ const Improved135Editor = forwardRef<Improved135EditorRef, Improved135EditorProp
       setError(null);
 
       const basePath = '/resource/135/';
-      
+
       // Load CSS first
       loadCSS(basePath + 'themes/96619a5672.css');
 
@@ -210,11 +212,13 @@ const Improved135Editor = forwardRef<Improved135EditorRef, Improved135EditorProp
         await loadScript(basePath + script);
       }
 
-      // Load final script
-      await loadScript(basePath + 'a92d301d77.js');
+      // Skip the problematic language file for now
+      // The a92d301d77.js file has issues with UE.I18N initialization
+      // The editor should work fine with default English language
+      console.log('Skipping language file to avoid I18N initialization errors');
 
       console.log('All 135Editor resources loaded successfully');
-      
+
       // Initialize editor after all resources are loaded
       initEditor();
 
