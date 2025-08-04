@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Video, Play, Calendar, User, Search, Filter, Plus, Share2, Copy, Eye } from 'lucide-react'
 import VideoModal from '../../components/video/VideoModal'
-import { toast } from 'sonner'
+import VideoUploadModal from '../../components/video/VideoUploadModal'
+import toast from 'react-hot-toast'
 
 interface VideoItem {
   id: string
@@ -24,24 +25,49 @@ interface VideoItem {
   quality?: string
   isOpen?: boolean
   status?: string
+  categoryId?: string
+  category?: {
+    id: string
+    title: string
+    name: string
+  }
+}
+
+interface Category {
+  id: string
+  title: string
+  name: string
 }
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<VideoItem[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false)
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
 
   useEffect(() => {
     fetchVideos()
+    fetchCategories()
   }, [])
+
+  useEffect(() => {
+    fetchVideos()
+  }, [searchTerm, selectedCategory])
 
   const fetchVideos = async () => {
     try {
       setLoading(true)
-      const response = await fetch('http://localhost:8080/api/v2/videos')
+      const params = new URLSearchParams()
+      if (searchTerm) params.append('search', searchTerm)
+      if (selectedCategory) params.append('categoryId', selectedCategory)
+
+      const url = `http://localhost:8080/api/v2/videos${params.toString() ? `?${params.toString()}` : ''}`
+      const response = await fetch(url)
       if (!response.ok) {
         throw new Error('Failed to fetch videos')
       }
@@ -54,10 +80,20 @@ export default function VideosPage() {
     }
   }
 
-  const filteredVideos = videos.filter(video =>
-    video.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    video.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/v2/videos/categories')
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories')
+      }
+      const data = await response.json()
+      setCategories(data.data || [])
+    } catch (err) {
+      console.error('Failed to load categories:', err)
+    }
+  }
+
+  // Videos are now filtered server-side, so we use the videos array directly
 
   const openVideoModal = (video: VideoItem) => {
     setSelectedVideo(video)
@@ -69,15 +105,38 @@ export default function VideosPage() {
     setIsVideoModalOpen(false)
   }
 
+  const openUploadModal = () => {
+    setIsUploadModalOpen(true)
+  }
+
+  const closeUploadModal = () => {
+    setIsUploadModalOpen(false)
+  }
+
+  const handleUploadSuccess = (newVideo: VideoItem) => {
+    // Add the new video to the list
+    setVideos(prevVideos => [newVideo, ...prevVideos])
+    toast.success('Video uploaded successfully!')
+  }
+
   const copyVideoUrl = async (video: VideoItem, e: React.MouseEvent) => {
     e.stopPropagation()
 
-    const videoUrl = `${window.location.origin}/videos/${video.id}`
+    // Use the actual Ali Cloud video URL instead of local app URL
+    const videoUrl = video.playbackUrl || video.cloudUrl || video.url || ''
+    console.log('Copying video URL:', videoUrl)
+
+    if (!videoUrl) {
+      toast.error('Video URL not available')
+      return
+    }
 
     try {
       await navigator.clipboard.writeText(videoUrl)
+      console.log('Successfully copied to clipboard using navigator.clipboard')
       toast.success('Video URL copied to clipboard!')
     } catch (error) {
+      console.log('Clipboard API failed, using fallback:', error)
       // Fallback for older browsers
       const textArea = document.createElement('textarea')
       textArea.value = videoUrl
@@ -85,6 +144,7 @@ export default function VideosPage() {
       textArea.select()
       document.execCommand('copy')
       document.body.removeChild(textArea)
+      console.log('Successfully copied using fallback method')
       toast.success('Video URL copied to clipboard!')
     }
   }
@@ -92,10 +152,18 @@ export default function VideosPage() {
   const shareVideo = async (video: VideoItem, e: React.MouseEvent) => {
     e.stopPropagation()
 
+    // Use the actual Ali Cloud video URL for sharing
+    const videoUrl = video.playbackUrl || video.cloudUrl || video.url || ''
+
+    if (!videoUrl) {
+      toast.error('Video URL not available for sharing')
+      return
+    }
+
     const shareData = {
       title: video.title,
       text: video.description || video.title,
-      url: `${window.location.origin}/videos/${video.id}`
+      url: videoUrl
     }
 
     try {
@@ -177,7 +245,10 @@ export default function VideosPage() {
           </p>
         </div>
         <div className="mt-4 sm:mt-0">
-          <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+          <button
+            onClick={openUploadModal}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Video
           </button>
@@ -198,10 +269,20 @@ export default function VideosPage() {
             />
           </div>
         </div>
-        <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </button>
+        <div className="sm:w-48">
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          >
+            <option value="">All Categories</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.title}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Stats */}
@@ -254,21 +335,24 @@ export default function VideosPage() {
       </div>
 
       {/* Videos Grid */}
-      {filteredVideos.length === 0 ? (
+      {videos.length === 0 ? (
         <div className="text-center py-12">
           <Video className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No videos found</h3>
           <p className="text-gray-500 mb-6">
-            {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first video'}
+            {searchTerm || selectedCategory ? 'Try adjusting your search terms or filters' : 'Get started by adding your first video'}
           </p>
-          <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700">
+          <button
+            onClick={openUploadModal}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Video
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVideos.map((video, index) => (
+          {videos.map((video, index) => (
             <motion.div
               key={video.id || index}
               initial={{ opacity: 0, y: 20 }}
@@ -391,6 +475,13 @@ export default function VideosPage() {
         video={selectedVideo}
         isOpen={isVideoModalOpen}
         onClose={closeVideoModal}
+      />
+
+      {/* Video Upload Modal */}
+      <VideoUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={closeUploadModal}
+        onUploadSuccess={handleUploadSuccess}
       />
     </div>
   )

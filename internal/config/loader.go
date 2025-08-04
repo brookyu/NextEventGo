@@ -150,6 +150,23 @@ func applyEnvOverrides(config *Config) {
 		}
 	}
 
+	// Ali Cloud configuration
+	if val := os.Getenv("ALI_CLOUD_REGION_ID"); val != "" {
+		config.AliCloud.Region.ID = val
+	}
+	if val := os.Getenv("ALI_CLOUD_ACCESS_KEY_ID"); val != "" {
+		config.AliCloud.AccessKey.ID = val
+	}
+	if val := os.Getenv("ALI_CLOUD_ACCESS_KEY_SECRET"); val != "" {
+		config.AliCloud.AccessKey.Secret = val
+	}
+	if val := os.Getenv("ALI_CLOUD_VOD_ENABLED"); val != "" {
+		config.AliCloud.VOD.Enabled = strings.ToLower(val) == "true"
+	}
+	if val := os.Getenv("ALI_CLOUD_VOD_ENDPOINT"); val != "" {
+		config.AliCloud.VOD.Endpoint = val
+	}
+
 	// JWT configuration
 	if val := os.Getenv("JWT_SECRET"); val != "" {
 		config.Security.JWT.Secret = val

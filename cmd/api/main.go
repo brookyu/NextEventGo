@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/zenteam/nextevent-go/internal/config"
 	"github.com/zenteam/nextevent-go/internal/infrastructure"
 	"github.com/zenteam/nextevent-go/internal/interfaces"
@@ -12,6 +13,11 @@ import (
 )
 
 func main() {
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found or could not be loaded: %v", err)
+	}
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {

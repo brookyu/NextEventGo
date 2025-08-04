@@ -202,3 +202,14 @@ monitoring:
   metrics_path: "/metrics"
   health_path: "/health"
   pprof_enabled: true
+
+# Ali Cloud Configuration
+ali_cloud:
+  region:
+    id: "cn-shanghai"
+  access_key:
+    id: "YOUR_ACCESS_KEY_ID"
+    secret: "YOUR_ACCESS_KEY_SECRET"
+  vod:
+    enabled: false  # Disabled in development
+    endpoint: "vod.cn-shanghai.aliyuncs.com"

@@ -49,8 +49,8 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	})
 
 	// Initialize API handlers for missing endpoints
-	apiHandlers := simple.NewAPIHandlers(infra.DB)
-	uploadHandlers := simple.NewUploadHandlers(infra.DB)
+	apiHandlers := simple.NewAPIHandlers(infra.DB, infra.Config)
+	uploadHandlers := simple.NewUploadHandlers(infra.DB, infra.Config)
 
 	// Setup API v2 routes (restored from main.bak)
 	api := router.Group("/api/v2")
@@ -73,6 +73,10 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 
 		// Videos endpoints
 		api.GET("/videos", apiHandlers.GetVideos)
+		api.POST("/videos/upload", uploadHandlers.UploadVideo)
+		api.GET("/videos/:id/status", uploadHandlers.GetVideoStatus)
+		api.GET("/videos/test-credentials", uploadHandlers.TestUploadCredentials)
+		api.GET("/videos/categories", apiHandlers.GetVideoCategories)
 
 		// News endpoint
 		api.GET("/news", apiHandlers.GetNews)
@@ -120,7 +124,7 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 		c.Data(200, "image/jpeg", pixel)
 	})
 
-	// Static file server for uploaded images
+	// Static file server for uploaded files
 	router.Static("/uploads", "./uploads")
 
 	// Backward compatibility: serve old MediaFiles/1/ path from uploads/images

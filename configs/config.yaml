@@ -226,3 +226,14 @@ features:
   email_enabled: true
   file_upload_enabled: true
   live_streaming_enabled: true
+
+# Ali Cloud Configuration
+ali_cloud:
+  region:
+    id: "cn-shanghai"
+  access_key:
+    id: "YOUR_ACCESS_KEY_ID"
+    secret: "YOUR_ACCESS_KEY_SECRET"
+  vod:
+    enabled: false  # Default disabled, override in environment-specific configs
+    endpoint: "vod.cn-shanghai.aliyuncs.com"

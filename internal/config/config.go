@@ -16,6 +16,7 @@ type Config struct {
 	QRCode   QRCodeConfig   `mapstructure:"qrcode"`
 	Security SecurityConfig `mapstructure:"security"`
 	Logging  LoggingConfig  `mapstructure:"logging"`
+	AliCloud AliCloudConfig `mapstructure:"ali_cloud"`
 }
 
 // AppConfig represents application-level configuration
@@ -125,6 +126,27 @@ type LoggingConfig struct {
 	Level string `mapstructure:"level"`
 }
 
+// AliCloudConfig represents Ali Cloud configuration
+type AliCloudConfig struct {
+	Region    AliCloudRegionConfig    `mapstructure:"region"`
+	AccessKey AliCloudAccessKeyConfig `mapstructure:"access_key"`
+	VOD       AliCloudVODConfig       `mapstructure:"vod"`
+}
+
+type AliCloudRegionConfig struct {
+	ID string `mapstructure:"id"`
+}
+
+type AliCloudAccessKeyConfig struct {
+	ID     string `mapstructure:"id"`
+	Secret string `mapstructure:"secret"`
+}
+
+type AliCloudVODConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Endpoint string `mapstructure:"endpoint"`
+}
+
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
@@ -200,6 +222,19 @@ func Load() (*Config, error) {
 		},
 		Logging: LoggingConfig{
 			Level: getEnv("LOGGING_LEVEL", "info"),
+		},
+		AliCloud: AliCloudConfig{
+			Region: AliCloudRegionConfig{
+				ID: getEnv("ALI_CLOUD_REGION_ID", "cn-shanghai"),
+			},
+			AccessKey: AliCloudAccessKeyConfig{
+				ID:     getEnv("ALI_CLOUD_ACCESS_KEY_ID", "YOUR_ACCESS_KEY_ID"),
+				Secret: getEnv("ALI_CLOUD_ACCESS_KEY_SECRET", "YOUR_ACCESS_KEY_SECRET"),
+			},
+			VOD: AliCloudVODConfig{
+				Enabled:  getEnvAsBool("ALI_CLOUD_VOD_ENABLED", false),
+				Endpoint: getEnv("ALI_CLOUD_VOD_ENDPOINT", "vod.cn-shanghai.aliyuncs.com"),
+			},
 		},
 	}
 	return cfg, nil

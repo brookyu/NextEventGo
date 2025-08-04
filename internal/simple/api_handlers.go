@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,18 +11,27 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/zenteam/nextevent-go/internal/config"
+	"github.com/zenteam/nextevent-go/internal/infrastructure"
 	"github.com/zenteam/nextevent-go/pkg/utils"
 	"gorm.io/gorm"
 )
 
 // APIHandlers contains all the API endpoint handlers
 type APIHandlers struct {
-	db *gorm.DB
+	db         *gorm.DB
+	vodService *infrastructure.AliCloudVODService
 }
 
 // NewAPIHandlers creates a new instance of API handlers
-func NewAPIHandlers(db *gorm.DB) *APIHandlers {
-	return &APIHandlers{db: db}
+func NewAPIHandlers(db *gorm.DB, cfg *config.Config) *APIHandlers {
+	// Create Ali Cloud VOD service from configuration
+	vodService := infrastructure.NewAliCloudVODServiceFromConfig(cfg, db)
+
+	return &APIHandlers{
+		db:         db,
+		vodService: vodService,
+	}
 }
 
 // Images API handlers
@@ -756,18 +766,29 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 		return
 	}
 
-	// Get videos with image relationships
+	// Get query parameters for filtering
+	categoryId := c.Query("categoryId")
+	search := c.Query("search")
+
+	// Build query for videos from VideoUploads table (Ali Cloud VOD integration)
+	query := h.db.Table("VideoUploads").Where("VideoUploads.IsDeleted = 0")
+
+	// Apply category filter if provided
+	if categoryId != "" {
+		query = query.Where("CategoryId = ?", categoryId)
+	}
+
+	// Apply search filter if provided
+	if search != "" {
+		query = query.Where("(Title LIKE ? OR Description LIKE ?)", "%"+search+"%", "%"+search+"%")
+	}
+
 	var rawVideos []map[string]interface{}
-	result := h.db.Table("CloudVideos").
-		Select(`CloudVideos.*,
-			site_image.SiteUrl as CoverImageUrl, site_image.Name as CoverImageName,
-			promo_image.SiteUrl as PromoImageUrl, promo_image.Name as PromoImageName,
-			thumb_image.SiteUrl as ThumbnailImageUrl, thumb_image.Name as ThumbnailImageName`).
-		Joins("LEFT JOIN SiteImages as site_image ON CloudVideos.SiteImageId = site_image.Id AND site_image.IsDeleted = 0").
-		Joins("LEFT JOIN SiteImages as promo_image ON CloudVideos.PromotionPicId = promo_image.Id AND promo_image.IsDeleted = 0").
-		Joins("LEFT JOIN SiteImages as thumb_image ON CloudVideos.ThumbnailId = thumb_image.Id AND thumb_image.IsDeleted = 0").
-		Where("CloudVideos.IsDeleted = 0").
-		Limit(10).
+	result := query.
+		Select("VideoUploads.*, Categories.Title as CategoryTitle").
+		Joins("LEFT JOIN Categories ON VideoUploads.CategoryId = Categories.Id AND Categories.IsDeleted = 0 AND Categories.ResourceType = 3").
+		Order("VideoUploads.CreationTime DESC").
+		Limit(100).
 		Find(&rawVideos)
 
 	if result.Error != nil {
@@ -775,13 +796,13 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 		return
 	}
 
-	// Map database fields to frontend expected fields with cover images
+	// Map database fields to frontend expected fields and check for missing URLs
 	videos := make([]map[string]interface{}, len(rawVideos))
 	for i, rawVideo := range rawVideos {
 		video := map[string]interface{}{
 			"id":          rawVideo["Id"],
 			"title":       rawVideo["Title"],
-			"description": rawVideo["Description"],
+			"description": rawVideo["Description"], // VideoUploads uses Description
 			"url":         rawVideo["Url"],
 			"playbackUrl": rawVideo["PlaybackUrl"],
 			"cloudUrl":    rawVideo["CloudUrl"],
@@ -796,30 +817,48 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 			"videoType":   rawVideo["VideoType"],
 			"quality":     rawVideo["Quality"],
 			"isOpen":      rawVideo["IsOpen"],
+			"categoryId":  rawVideo["CategoryId"],
 		}
 
-		// Add cover image URLs with proper base URL
-		baseURL := "http://localhost:8080"
-		if rawVideo["CoverImageUrl"] != nil {
-			video["coverImage"] = baseURL + rawVideo["CoverImageUrl"].(string)
-			video["coverImageName"] = rawVideo["CoverImageName"]
-		}
-		if rawVideo["PromoImageUrl"] != nil {
-			video["promoImage"] = baseURL + rawVideo["PromoImageUrl"].(string)
-			video["promoImageName"] = rawVideo["PromoImageName"]
-		}
-		if rawVideo["ThumbnailImageUrl"] != nil {
-			video["thumbnail"] = baseURL + rawVideo["ThumbnailImageUrl"].(string)
-			video["thumbnailName"] = rawVideo["ThumbnailImageName"]
+		// Add category information if available
+		if rawVideo["CategoryTitle"] != nil {
+			if categoryTitle, ok := rawVideo["CategoryTitle"].(string); ok && categoryTitle != "" {
+				video["category"] = map[string]interface{}{
+					"id":    rawVideo["CategoryId"],
+					"title": categoryTitle,
+					"name":  categoryTitle, // For backward compatibility
+				}
+			}
 		}
 
-		// Use the best available image as the primary thumbnail
-		if video["thumbnail"] != nil {
-			video["thumbnailUrl"] = video["thumbnail"]
-		} else if video["coverImage"] != nil {
-			video["thumbnailUrl"] = video["coverImage"]
-		} else if video["promoImage"] != nil {
-			video["thumbnailUrl"] = video["promoImage"]
+		// Use CoverUrl field from VideoUploads table (Ali Cloud VOD integration)
+		if rawVideo["CoverUrl"] != nil {
+			if coverUrlStr, ok := rawVideo["CoverUrl"].(string); ok && coverUrlStr != "" {
+				video["coverImage"] = coverUrlStr
+				video["thumbnail"] = coverUrlStr
+				video["thumbnailUrl"] = coverUrlStr
+			}
+		}
+
+		// Check if PlaybackUrl or CoverUrl is missing and try to refresh from Ali Cloud
+		playbackUrl, _ := rawVideo["PlaybackUrl"].(string)
+		coverUrl, _ := rawVideo["CoverUrl"].(string)
+		remoteVideoId, _ := rawVideo["RemoteVideoId"].(string)
+
+		if (playbackUrl == "" || coverUrl == "") && remoteVideoId != "" {
+			// Try to refresh URLs from Ali Cloud VOD
+			refreshedUrls := h.refreshVideoUrlsFromAliCloud(remoteVideoId, rawVideo["Id"].(string))
+			if refreshedUrls != nil {
+				if refreshedUrls["playbackUrl"] != "" {
+					video["playbackUrl"] = refreshedUrls["playbackUrl"]
+					video["cloudUrl"] = refreshedUrls["playbackUrl"]
+				}
+				if refreshedUrls["coverUrl"] != "" {
+					video["coverImage"] = refreshedUrls["coverUrl"]
+					video["thumbnail"] = refreshedUrls["coverUrl"]
+					video["thumbnailUrl"] = refreshedUrls["coverUrl"]
+				}
+			}
 		}
 
 		videos[i] = video
@@ -829,6 +868,104 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 		"data":  videos,
 		"count": len(videos),
 	})
+}
+
+// GetVideoCategories returns list of video categories
+func (h *APIHandlers) GetVideoCategories(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(200, gin.H{
+			"data":    []gin.H{},
+			"message": "Database not connected",
+		})
+		return
+	}
+
+	// Get video categories (ResourceType = 3 for videos)
+	var rawCategories []map[string]interface{}
+	result := h.db.Table("Categories").
+		Where("IsDeleted = 0 AND ResourceType = 3").
+		Order("Title ASC").
+		Find(&rawCategories)
+
+	if result.Error != nil {
+		c.JSON(500, gin.H{"error": result.Error.Error()})
+		return
+	}
+
+	// Map database fields to frontend expected fields
+	categories := make([]map[string]interface{}, len(rawCategories))
+	for i, rawCategory := range rawCategories {
+		categories[i] = map[string]interface{}{
+			"id":    rawCategory["Id"],
+			"title": rawCategory["Title"],
+			"name":  rawCategory["Title"], // For backward compatibility
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"data":  categories,
+		"count": len(categories),
+	})
+}
+
+// refreshVideoUrlsFromAliCloud attempts to refresh video URLs from Ali Cloud VOD
+// Returns a map with "playbackUrl" and "coverUrl" if successful, nil if failed
+func (h *APIHandlers) refreshVideoUrlsFromAliCloud(remoteVideoId, videoId string) map[string]string {
+	if h.vodService == nil {
+		return nil
+	}
+
+	// Get video info from Ali Cloud to check status and get cover URL
+	ctx := context.Background()
+	videoInfo, err := h.vodService.GetAliCloudVideoInfo(ctx, remoteVideoId)
+	if err != nil {
+		// Video may still be processing or not found
+		fmt.Printf("🔄 Refresh failed for video %s (RemoteVideoId: %s): %v\n", videoId, remoteVideoId, err)
+		return nil
+	}
+
+	// Check if video status is normal (ready for playback)
+	fmt.Printf("🔄 Video %s status: %s, PlayInfoList count: %d\n", remoteVideoId, videoInfo.Status, len(videoInfo.PlayInfoList))
+	if videoInfo.Status != "Normal" {
+		// Video is still processing
+		fmt.Printf("⏳ Video %s still processing (Status: %s)\n", remoteVideoId, videoInfo.Status)
+		return nil
+	}
+
+	// Extract URLs using the same logic as the upload process
+	playbackUrl := h.vodService.ExtractPlayUrl(videoInfo)
+	coverUrl := videoInfo.CoverURL
+
+	fmt.Printf("🔄 Extracted URLs for video %s: PlaybackUrl=%s, CoverUrl=%s\n", remoteVideoId, playbackUrl, coverUrl)
+
+	// Update database if we got valid URLs
+	if playbackUrl != "" || coverUrl != "" {
+		updateData := map[string]interface{}{
+			"LastModificationTime": time.Now(),
+		}
+
+		if playbackUrl != "" {
+			updateData["PlaybackUrl"] = playbackUrl
+			updateData["CloudUrl"] = playbackUrl
+		}
+
+		if coverUrl != "" {
+			updateData["CoverUrl"] = coverUrl
+		}
+
+		// Update the database record
+		if err := h.db.Table("VideoUploads").Where("Id = ?", videoId).Updates(updateData).Error; err != nil {
+			// Log error but don't fail the request
+			fmt.Printf("Warning: Failed to update video URLs for %s: %v\n", videoId, err)
+		}
+
+		return map[string]string{
+			"playbackUrl": playbackUrl,
+			"coverUrl":    coverUrl,
+		}
+	}
+
+	return nil
 }
 
 // Events API handlers

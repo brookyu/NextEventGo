@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Share2, Download, Heart, Eye } from 'lucide-react'
 import VideoPlayer from './VideoPlayer'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 interface VideoItem {
   id: string
@@ -55,9 +55,15 @@ export default function VideoModal({ video, isOpen, onClose }: VideoModalProps) 
 
   const copyVideoUrl = async () => {
     if (!video) return
-    
-    const videoUrl = `${window.location.origin}/videos/${video.id}`
-    
+
+    // Use the actual Ali Cloud video URL instead of local app URL
+    const videoUrl = video.playbackUrl || video.cloudUrl || video.url || ''
+
+    if (!videoUrl) {
+      toast.error('Video URL not available')
+      return
+    }
+
     try {
       await navigator.clipboard.writeText(videoUrl)
       toast.success('Video URL copied to clipboard!')
@@ -76,10 +82,18 @@ export default function VideoModal({ video, isOpen, onClose }: VideoModalProps) 
   const shareVideo = async () => {
     if (!video) return
 
+    // Use the actual Ali Cloud video URL for sharing
+    const videoUrl = video.playbackUrl || video.cloudUrl || video.url || ''
+
+    if (!videoUrl) {
+      toast.error('Video URL not available for sharing')
+      return
+    }
+
     const shareData = {
       title: video.title,
       text: video.description || video.title,
-      url: `${window.location.origin}/videos/${video.id}`
+      url: videoUrl
     }
 
     try {

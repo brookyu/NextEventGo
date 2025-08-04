@@ -35,7 +35,7 @@ func (h *HealthHandler) CheckHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":    status,
 		"database":  dbStatus,
-		"timestamp": fmt.Sprintf("%d", gin.H{}),
+		"timestamp": fmt.Sprintf("%d", time.Now().Unix()),
 	})
 }
 

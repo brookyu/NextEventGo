@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { QrCode, Download, Copy, Smartphone, Monitor, Tablet } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
