@@ -384,20 +384,19 @@ func (h *APIHandlers) GetArticles(c *gin.Context) {
 		}
 
 		articles[i] = map[string]interface{}{
-			"id":           rawArticle["Id"],
-			"title":        rawArticle["Title"],
-			"content":      rawArticle["Content"],
-			"summary":      rawArticle["Summary"],
-			"author":       rawArticle["Author"],
-			"created_at":   rawArticle["CreationTime"],
-			"updated_at":   rawArticle["LastModificationTime"],
-			"published_at": rawArticle["PublishedAt"],
-			"status":       rawArticle["Status"],
-			"category":     rawArticle["Category"],
-			"tags":         tags,
-			"categoryId":   rawArticle["CategoryId"],
-			"viewCount":    rawArticle["ViewCount"],
-			"readCount":    rawArticle["ReadCount"],
+			"id":             rawArticle["Id"],
+			"title":          rawArticle["Title"],
+			"content":        rawArticle["Content"],
+			"summary":        rawArticle["Summary"],
+			"author":         rawArticle["Author"],
+			"categoryId":     rawArticle["CategoryId"],
+			"siteImageId":    rawArticle["SiteImageId"],
+			"promotionPicId": rawArticle["PromotionPicId"],
+			"jumpResourceId": rawArticle["JumpResourceId"],
+			"created_at":     rawArticle["CreationTime"],
+			"updated_at":     rawArticle["LastModificationTime"],
+			"tags":           tags,
+			"readCount":      rawArticle["ReadCount"],
 		}
 	}
 
@@ -443,20 +442,19 @@ func (h *APIHandlers) GetArticle(c *gin.Context) {
 
 	// Map database fields to frontend expected fields
 	article := map[string]interface{}{
-		"id":           rawArticle["Id"],
-		"title":        rawArticle["Title"],
-		"content":      rawArticle["Content"],
-		"summary":      rawArticle["Summary"],
-		"author":       rawArticle["Author"],
-		"created_at":   rawArticle["CreationTime"],
-		"updated_at":   rawArticle["LastModificationTime"],
-		"published_at": rawArticle["PublishedAt"],
-		"status":       rawArticle["Status"],
-		"category":     rawArticle["Category"],
-		"tags":         tags,
-		"categoryId":   rawArticle["CategoryId"],
-		"viewCount":    rawArticle["ViewCount"],
-		"readCount":    rawArticle["ReadCount"],
+		"id":             rawArticle["Id"],
+		"title":          rawArticle["Title"],
+		"content":        rawArticle["Content"],
+		"summary":        rawArticle["Summary"],
+		"author":         rawArticle["Author"],
+		"categoryId":     rawArticle["CategoryId"],
+		"siteImageId":    rawArticle["SiteImageId"],
+		"promotionPicId": rawArticle["PromotionPicId"],
+		"jumpResourceId": rawArticle["JumpResourceId"],
+		"created_at":     rawArticle["CreationTime"],
+		"updated_at":     rawArticle["LastModificationTime"],
+		"tags":           tags,
+		"readCount":      rawArticle["ReadCount"],
 	}
 
 	c.JSON(200, gin.H{
@@ -515,6 +513,19 @@ func (h *APIHandlers) CreateArticle(c *gin.Context) {
 		"IsDeleted":            false,
 	}
 
+	// Add optional fields if provided
+	if siteImageId, ok := articleData["siteImageId"]; ok && siteImageId != "" {
+		dbArticle["SiteImageId"] = siteImageId
+	}
+	if promotionPicId, ok := articleData["promotionPicId"]; ok && promotionPicId != "" {
+		dbArticle["PromotionPicId"] = promotionPicId
+	}
+	if jumpResourceId, ok := articleData["jumpResourceId"]; ok && jumpResourceId != "" {
+		dbArticle["JumpResourceId"] = jumpResourceId
+	}
+	// Note: FrontCoverImageUrl and IsPublished columns don't exist in SiteArticles table
+	// These fields are handled by the v2 API with proper entity structure
+
 	// Insert into database
 	result := h.db.Table("SiteArticles").Create(&dbArticle)
 	if result.Error != nil {
@@ -534,15 +545,18 @@ func (h *APIHandlers) CreateArticle(c *gin.Context) {
 
 	// Return created article
 	article := map[string]interface{}{
-		"id":         articleId,
-		"title":      articleData["title"],
-		"content":    articleData["content"],
-		"summary":    articleData["summary"],
-		"author":     articleData["author"],
-		"categoryId": articleData["categoryId"],
-		"tags":       tags,
-		"created_at": now,
-		"updated_at": now,
+		"id":             articleId,
+		"title":          articleData["title"],
+		"content":        articleData["content"],
+		"summary":        articleData["summary"],
+		"author":         articleData["author"],
+		"categoryId":     articleData["categoryId"],
+		"siteImageId":    articleData["siteImageId"],
+		"promotionPicId": articleData["promotionPicId"],
+		"jumpResourceId": articleData["jumpResourceId"],
+		"tags":           tags,
+		"created_at":     now,
+		"updated_at":     now,
 	}
 
 	c.JSON(201, gin.H{
@@ -624,13 +638,31 @@ func (h *APIHandlers) UpdateArticle(c *gin.Context) {
 		}
 		updateData["Tags"] = tagsStr
 	}
-	// Note: IsPublished column doesn't exist in SiteArticles table
-	// if isPublished, ok := articleData["isPublished"]; ok {
-	//     updateData["IsPublished"] = isPublished
-	//     if isPublished == true {
-	//         updateData["PublishedAt"] = time.Now()
-	//     }
-	// }
+
+	// Add optional fields if provided
+	if siteImageId, ok := articleData["siteImageId"]; ok {
+		if siteImageId == "" {
+			updateData["SiteImageId"] = nil
+		} else {
+			updateData["SiteImageId"] = siteImageId
+		}
+	}
+	if promotionPicId, ok := articleData["promotionPicId"]; ok {
+		if promotionPicId == "" {
+			updateData["PromotionPicId"] = nil
+		} else {
+			updateData["PromotionPicId"] = promotionPicId
+		}
+	}
+	if jumpResourceId, ok := articleData["jumpResourceId"]; ok {
+		if jumpResourceId == "" {
+			updateData["JumpResourceId"] = nil
+		} else {
+			updateData["JumpResourceId"] = jumpResourceId
+		}
+	}
+	// Note: FrontCoverImageUrl and IsPublished columns don't exist in SiteArticles table
+	// These fields are handled by the v2 API with proper entity structure
 
 	// Update in database
 	result = h.db.Table("SiteArticles").Where("Id = ?", articleId).Updates(updateData)
@@ -751,6 +783,53 @@ func (h *APIHandlers) GetCategories(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"data":  categories,
 		"count": len(categories),
+	})
+}
+
+// GetTags returns list of tags
+func (h *APIHandlers) GetTags(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(200, gin.H{
+			"data":    []gin.H{},
+			"message": "Database not connected",
+		})
+		return
+	}
+
+	// Get tagType parameter (optional)
+	tagTypeParam := c.Query("tagType")
+
+	query := h.db.Table("Tags").Where("IsDeleted = 0")
+
+	// Filter by tagType if provided
+	if tagTypeParam != "" {
+		query = query.Where("TagType = ?", tagTypeParam)
+	}
+
+	var rawTags []map[string]interface{}
+	result := query.Order("TagTitle ASC").Find(&rawTags)
+	if result.Error != nil {
+		c.JSON(500, gin.H{"error": result.Error.Error()})
+		return
+	}
+
+	// Map database fields to frontend expected fields
+	tags := make([]map[string]interface{}, len(rawTags))
+	for i, rawTag := range rawTags {
+		tags[i] = map[string]interface{}{
+			"id":             rawTag["Id"],
+			"tagTitle":       rawTag["TagTitle"],
+			"tagType":        rawTag["TagType"],
+			"tagDescription": rawTag["TagDescription"],
+			"hits":           rawTag["Hits"],
+			"weight":         rawTag["Weight"],
+			"created_at":     rawTag["CreationTime"],
+			"updated_at":     rawTag["LastModificationTime"],
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"data": tags,
 	})
 }
 

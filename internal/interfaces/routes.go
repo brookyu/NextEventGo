@@ -71,6 +71,9 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 		// Categories endpoint
 		api.GET("/categories", apiHandlers.GetCategories)
 
+		// Tags endpoint
+		api.GET("/tags", apiHandlers.GetTags)
+
 		// Videos endpoints
 		api.GET("/videos", apiHandlers.GetVideos)
 		api.POST("/videos/upload", uploadHandlers.UploadVideo)

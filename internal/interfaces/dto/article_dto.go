@@ -31,6 +31,7 @@ type ArticleDTO struct {
 	PublishedAt        *time.Time   `json:"publishedAt,omitempty"`
 	ViewCount          int64        `json:"viewCount"`
 	ReadCount          int64        `json:"readCount"`
+	Tags               []string     `json:"tags,omitempty"`
 	Category           *CategoryDTO `json:"category,omitempty"`
 	CoverImage         *ImageDTO    `json:"coverImage,omitempty"`
 	PromotionImage     *ImageDTO    `json:"promotionImage,omitempty"`
@@ -52,6 +53,7 @@ type CreateArticleRequest struct {
 	JumpResourceId     *uuid.UUID `json:"jumpResourceId,omitempty"`
 	FrontCoverImageUrl string     `json:"frontCoverImageUrl"`
 	IsPublished        bool       `json:"isPublished"`
+	Tags               []string   `json:"tags,omitempty"`
 }
 
 // UpdateArticleRequest represents a request to update an article
@@ -66,6 +68,7 @@ type UpdateArticleRequest struct {
 	JumpResourceId     *uuid.UUID `json:"jumpResourceId,omitempty"`
 	FrontCoverImageUrl *string    `json:"frontCoverImageUrl,omitempty"`
 	IsPublished        *bool      `json:"isPublished,omitempty"`
+	Tags               []string   `json:"tags,omitempty"`
 }
 
 // ArticleListRequest represents a request to list articles
@@ -151,6 +154,18 @@ type ImageDTO struct {
 	URL      string    `json:"url"`
 	FileSize int64     `json:"fileSize"`
 	MimeType string    `json:"mimeType"`
+}
+
+// TagDTO represents a tag data transfer object
+type TagDTO struct {
+	ID             string     `json:"id"`
+	TagTitle       string     `json:"tagTitle"`
+	TagType        int        `json:"tagType"`
+	TagDescription string     `json:"tagDescription,omitempty"`
+	Hits           int64      `json:"hits"`
+	Weight         int        `json:"weight"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      *time.Time `json:"updated_at,omitempty"`
 }
 
 // PaginationDTO represents pagination information

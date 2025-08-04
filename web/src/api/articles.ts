@@ -46,6 +46,17 @@ export interface CategoryWithStats extends Category {
   draftCount: number;
 }
 
+export interface Tag {
+  id: string;
+  tagTitle: string;
+  tagType: number;
+  tagDescription?: string;
+  hits: number;
+  weight: number;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface Image {
   id: string;
   name: string;
@@ -166,7 +177,20 @@ export const articlesApi = {
   // Article CRUD
   getArticles: async (params?: ArticleListParams): Promise<ArticleListResponse> => {
     const response = await apiClient.get('/articles', { params });
-    return response.data?.data || response.data;
+    // Backend returns { data: [...], count: number }
+    // Transform to expected frontend format
+    const backendData = response.data;
+    return {
+      data: backendData?.data || [],
+      pagination: {
+        page: 1,
+        pageSize: backendData?.data?.length || 0,
+        total: backendData?.count || 0,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      }
+    };
   },
 
   getArticle: async (id: string): Promise<Article> => {
@@ -260,6 +284,19 @@ export const categoriesApi = {
   getActiveCategories: async (): Promise<Category[]> => {
     const response = await apiClient.get('/public/categories');
     return response.data?.data || [];
+  },
+};
+
+// Tags API functions
+export const tagsApi = {
+  getTags: async (tagType?: number): Promise<Tag[]> => {
+    const response = await apiClient.get('/tags', { params: { tagType } });
+    return response.data?.data || [];
+  },
+
+  getTag: async (id: string): Promise<Tag> => {
+    const response = await apiClient.get(`/tags/${id}`);
+    return response.data?.data || response.data;
   },
 };
 

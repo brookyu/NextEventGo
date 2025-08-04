@@ -2,22 +2,25 @@
 
 export interface ImageCategory {
   id: string
-  name: string
-  description: string
-  sortOrder: number
-  createdAt: string
-  updatedAt: string
+  title: string
+  type: number
 }
 
 export interface Image {
   id: string
-  name: string
-  siteUrl: string
+  title: string
+  alt_text: string
+  description: string
   url: string
-  mediaId: string
-  categoryId: string
-  createdAt: string
-  updatedAt: string
+  thumbnail: string
+  author?: string
+  format?: string
+  size?: number
+  width?: number
+  height?: number
+  created_at: string
+  updated_at?: string
+  category?: ImageCategory
 }
 
 // Alias for compatibility
@@ -56,7 +59,7 @@ export interface UpdateImageRequest {
   categoryId?: string
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v2'
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -90,7 +93,7 @@ const createUploadHeaders = () => {
 export const imageCategories = {
   // Get all categories
   getAll: async (ordered = false): Promise<CategoriesResponse> => {
-    const url = `${API_BASE_URL}/image-categories${ordered ? '?ordered=true' : ''}`
+    const url = `${API_BASE_URL}/categories${ordered ? '?ordered=true' : ''}`
     const response = await fetch(url, {
       method: 'GET',
       headers: createHeaders(),
@@ -105,7 +108,7 @@ export const imageCategories = {
 
   // Get category by ID
   getById: async (id: string): Promise<{ data: ImageCategory }> => {
-    const response = await fetch(`${API_BASE_URL}/image-categories/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
       method: 'GET',
       headers: createHeaders(),
     })
@@ -119,7 +122,7 @@ export const imageCategories = {
 
   // Create new category
   create: async (category: CreateCategoryRequest): Promise<{ data: ImageCategory }> => {
-    const response = await fetch(`${API_BASE_URL}/image-categories`, {
+    const response = await fetch(`${API_BASE_URL}/categories`, {
       method: 'POST',
       headers: createHeaders(),
       body: JSON.stringify(category),
@@ -134,7 +137,7 @@ export const imageCategories = {
 
   // Update category
   update: async (id: string, category: UpdateCategoryRequest): Promise<{ data: ImageCategory }> => {
-    const response = await fetch(`${API_BASE_URL}/image-categories/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
       method: 'PUT',
       headers: createHeaders(),
       body: JSON.stringify(category),
@@ -149,7 +152,7 @@ export const imageCategories = {
 
   // Delete category
   delete: async (id: string): Promise<{ message: string }> => {
-    const response = await fetch(`${API_BASE_URL}/image-categories/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
       method: 'DELETE',
       headers: createHeaders(),
     })
@@ -191,19 +194,7 @@ export const images = {
     return response.json()
   },
 
-  // Get image by ID
-  getById: async (id: string): Promise<{ data: Image }> => {
-    const response = await fetch(`${API_BASE_URL}/images/${id}`, {
-      method: 'GET',
-      headers: createHeaders(),
-    })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.statusText}`)
-    }
-
-    return response.json()
-  },
 
   // Upload image
   upload: async (file: File, categoryId: string): Promise<{ data: Image }> => {

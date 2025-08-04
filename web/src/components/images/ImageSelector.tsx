@@ -19,15 +19,19 @@ import { imagesApi, type SiteImage } from '@/api/images';
 interface ImageSelectorProps {
   selectedImageId?: string;
   onImageSelect: (imageId: string | undefined) => void;
+  onImageInsert?: (image: SiteImage) => void; // For direct insertion (like in editor)
   placeholder?: string;
   className?: string;
+  contentOnly?: boolean; // If true, render only the content without Dialog wrapper
 }
 
 const ImageSelector: React.FC<ImageSelectorProps> = ({
   selectedImageId,
   onImageSelect,
+  onImageInsert,
   placeholder = 'Select an image',
   className,
+  contentOnly = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,23 +39,34 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
   // Fetch images
   const { data: imagesResponse, isLoading } = useQuery({
     queryKey: ['images', { search: searchTerm }],
-    queryFn: () => imagesApi.getImages({ 
-      search: searchTerm,
-      pageSize: 20,
+    queryFn: () => imagesApi.getAll({
+      name: searchTerm || undefined,
+      limit: 20,
     }),
+    enabled: contentOnly || isOpen, // Enable query for contentOnly mode or when dialog is open
   });
 
   // Get selected image details
-  const { data: selectedImage } = useQuery({
-    queryKey: ['image', selectedImageId],
-    queryFn: () => imagesApi.getImage(selectedImageId!),
-    enabled: !!selectedImageId,
-  });
+  const selectedImage = selectedImageId
+    ? imagesResponse?.data?.find(img => img.id === selectedImageId)
+    : undefined;
 
   const images = imagesResponse?.data || [];
 
-  const handleImageSelect = (image: SiteImage) => {
-    onImageSelect(image.id);
+  const handleImageSelect = (image: SiteImage, event?: React.MouseEvent) => {
+    // Prevent form submission and event propagation
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (onImageInsert) {
+      // For insertion mode (like editor insertion)
+      onImageInsert(image);
+    } else {
+      // For selection mode (like form field)
+      onImageSelect(image.id);
+    }
     setIsOpen(false);
   };
 
@@ -59,38 +74,9 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
     onImageSelect(undefined);
   };
 
-  return (
-    <div className={cn('space-y-2', className)}>
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            className="w-full h-auto p-4 flex flex-col items-center gap-2"
-          >
-            {selectedImage ? (
-              <>
-                <img
-                  src={selectedImage.url}
-                  alt={selectedImage.name}
-                  className="w-full h-32 object-cover rounded"
-                />
-                <span className="text-sm font-medium">{selectedImage.name}</span>
-              </>
-            ) : (
-              <>
-                <ImageIcon className="h-8 w-8 text-gray-400" />
-                <span className="text-sm text-gray-500">{placeholder}</span>
-              </>
-            )}
-          </Button>
-        </DialogTrigger>
-
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Select Image</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
+  // Extract the content part for reuse
+  const renderContent = () => (
+    <div className="space-y-4">
             {/* Search */}
             <div className="flex gap-2">
               <Input
@@ -99,7 +85,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="flex-1"
               />
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" type="button">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload New
               </Button>
@@ -127,7 +113,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                           ? 'border-blue-500 ring-2 ring-blue-200'
                           : 'border-gray-200 hover:border-gray-300'
                       )}
-                      onClick={() => handleImageSelect(image)}
+                      onClick={(e) => handleImageSelect(image, e)}
                     >
                       <img
                         src={image.url}
@@ -158,7 +144,47 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
                 </div>
               )}
             </div>
-          </div>
+    </div>
+  );
+
+  // If contentOnly mode, return just the content
+  if (contentOnly) {
+    return renderContent();
+  }
+
+  // Otherwise, return the full component with Dialog
+  return (
+    <div className={cn('space-y-2', className)}>
+      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="outline"
+            className="w-full h-auto p-4 flex flex-col items-center gap-2"
+            type="button"
+          >
+            {selectedImage ? (
+              <>
+                <img
+                  src={selectedImage.url}
+                  alt={selectedImage.name}
+                  className="w-full h-32 object-cover rounded"
+                />
+                <span className="text-sm font-medium">{selectedImage.name}</span>
+              </>
+            ) : (
+              <>
+                <ImageIcon className="h-8 w-8 text-gray-400" />
+                <span className="text-sm text-gray-500">{placeholder}</span>
+              </>
+            )}
+          </Button>
+        </DialogTrigger>
+
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Select Image</DialogTitle>
+          </DialogHeader>
+          {renderContent()}
         </DialogContent>
       </Dialog>
 
@@ -169,6 +195,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
           size="sm"
           onClick={handleClearSelection}
           className="w-full flex items-center gap-2"
+          type="button"
         >
           <X className="h-4 w-4" />
           Clear Selection

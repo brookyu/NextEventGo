@@ -286,6 +286,83 @@ export interface MediaFile {
   createdBy: string;
 }
 
+// Video Types
+
+export type VideoType = 'live' | 'on_demand' | 'recorded' | 'streaming';
+export type VideoStatus = 'draft' | 'scheduled' | 'live' | 'ended' | 'archived' | 'deleted';
+export type VideoQuality = 'auto' | '240p' | '360p' | '480p' | '720p' | '1080p' | '4k';
+
+export interface VideoItem {
+  id: string;
+  title: string;
+  description?: string;
+  summary?: string;
+  videoType: VideoType;
+  status: VideoStatus;
+
+  // URLs and streaming
+  url?: string;
+  playbackUrl?: string;
+  cloudUrl?: string;
+  streamKey?: string;
+
+  // Media properties
+  thumbnailUrl?: string;
+  coverImage?: string;
+  promoImage?: string;
+  duration?: number; // in seconds
+  quality: VideoQuality;
+  resolution?: string;
+  frameRate?: number;
+  bitrate?: number;
+
+  // Metadata
+  author?: string;
+  categoryId?: string;
+  category?: VideoCategory;
+
+  // Analytics
+  views?: number;
+  viewCount?: number;
+  likeCount?: number;
+  shareCount?: number;
+  commentCount?: number;
+  watchTime?: number;
+
+  // Configuration
+  isOpen?: boolean;
+  requireAuth?: boolean;
+  supportInteraction?: boolean;
+  allowDownload?: boolean;
+
+  // Timestamps
+  startTime?: string;
+  videoEndTime?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  publishedAt?: string;
+
+  // Relations
+  siteImageId?: string;
+  promotionPicId?: string;
+  thumbnailId?: string;
+  boundEventId?: string;
+}
+
+export interface VideoCategory {
+  id: string;
+  title: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  videoCount?: number;
+}
+
 export interface MediaUploadRequest {
   file: File;
   category?: string;
@@ -296,6 +373,67 @@ export interface MediaUploadRequest {
 export interface MediaUploadResponse {
   success: boolean;
   media: MediaFile;
+  message: string;
+}
+
+// Video API Types
+
+export interface VideoSearchRequest {
+  search?: string;
+  categoryId?: string;
+  videoType?: VideoType;
+  status?: VideoStatus;
+  author?: string;
+  isOpen?: boolean;
+
+  // Pagination
+  page?: number;
+  pageSize?: number;
+  limit?: number;
+  offset?: number;
+
+  // Sorting
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+
+  // Include options
+  includeCategory?: boolean;
+  includeAnalytics?: boolean;
+}
+
+export interface VideoListResponse {
+  data: VideoItem[];
+  videos?: VideoItem[]; // Alternative field name
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+    offset?: number;
+    limit?: number;
+    count?: number;
+  };
+  message?: string;
+}
+
+export interface VideoUploadRequest {
+  file: File;
+  title: string;
+  description?: string;
+  categoryId?: string;
+  videoType?: VideoType;
+  quality?: VideoQuality;
+  isOpen?: boolean;
+  requireAuth?: boolean;
+  tags?: string[];
+}
+
+export interface VideoUploadResponse {
+  success: boolean;
+  video: VideoItem;
+  uploadId?: string;
   message: string;
 }
 

@@ -12,6 +12,7 @@ import {
   Send,
   ArrowLeft,
   Image as ImageIcon,
+  Video as VideoIcon,
   Settings,
   Clock,
   User,
@@ -73,8 +74,13 @@ import Real135Editor from './Real135Editor';
 import Reliable135Editor from './Reliable135Editor';
 import Improved135Editor from './Improved135Editor';
 import ImageSelector from '../images/ImageSelector';
+import VideoSelector from '../video/VideoSelector';
+import SourceArticleSelector from './SourceArticleSelector';
+import { TagSelector } from '@/components/ui/TagSelector';
 import { articlesApi, categoriesApi, type Article, type Category, type CreateArticleRequest, type UpdateArticleRequest } from '@/api/articles';
 import { imagesApi } from '@/api/images';
+import { videosApi, type VideoItem } from '@/api/videos';
+import { insertImageIntoEditor, insertVideoIntoEditor, insertWeChatReadMoreLink, getEditorInstance } from '@/utils/mediaInsertion';
 import './CreateUpdateArticle.css';
 
 const articleSchema = z.object({
@@ -94,8 +100,9 @@ const articleSchema = z.object({
       return false;
     }
   }, 'Must be a valid URL'),
+  sourceArticleId: z.string().optional(), // For WeChat read more links
   isPublished: z.boolean(),
-  tags: z.union([z.string(), z.array(z.string())]).optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 type ArticleFormData = z.infer<typeof articleSchema>;
@@ -121,6 +128,8 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
   const [showStylePanel, setShowStylePanel] = useState(false);
   const [editorType, setEditorType] = useState<'enhanced' | 'real135'>('real135');
   const [showImageSelector, setShowImageSelector] = useState(false);
+  const [showVideoSelector, setShowVideoSelector] = useState(false);
+  const [showSourceArticleSelector, setShowSourceArticleSelector] = useState(false);
 
   const [isDirty, setIsDirty] = useState(false);
 
@@ -145,6 +154,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
       siteImageId: '',
       promotionPicId: '',
       frontCoverImageUrl: '',
+      sourceArticleId: '',
       isPublished: false,
       tags: [],
     },
@@ -180,6 +190,17 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
     queryKey: ['categories'],
     queryFn: categoriesApi.getCategories,
   });
+
+  // Debug categories and form values
+  // useEffect(() => {
+  //   console.log('Categories loaded:', categories.length, categories);
+  //   console.log('Current categoryId value:', watch('categoryId'));
+  //   console.log('Article categoryId:', article?.categoryId);
+  //   if (categories.length > 0 && article?.categoryId) {
+  //     const matchingCategory = categories.find(cat => cat.id === article.categoryId);
+  //     console.log('Matching category found:', matchingCategory);
+  //   }
+  // }, [categories, watch('categoryId'), article?.categoryId]);
 
   // Debug categories
   useEffect(() => {
@@ -225,10 +246,8 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
     if (!autoSave || !isDirty || mode === 'create') return;
 
     const formData = watch();
-    // Convert tags string to array
-    const tagsArray = typeof formData.tags === 'string'
-      ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-      : (formData.tags || []);
+    // Tags are already an array of IDs
+    const tagsArray = formData.tags || [];
 
     updateMutation.mutate({
       title: formData.title,
@@ -239,6 +258,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
       siteImageId: formData.siteImageId,
       promotionPicId: formData.promotionPicId,
       frontCoverImageUrl: formData.frontCoverImageUrl,
+      jumpResourceId: formData.sourceArticleId,
       isPublished: formData.isPublished,
       tags: tagsArray,
     });
@@ -266,21 +286,34 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
     if (article && mode === 'edit') {
       // console.log('Loading article data for edit:', article);
       // console.log('Article content:', article.content);
-      reset({
-        title: article.title || '',
-        summary: article.summary || '',
-        content: article.content || '',
-        author: article.author || '',
-        categoryId: article.categoryId || '',
-        siteImageId: article.siteImageId || '',
-        promotionPicId: article.promotionPicId || '',
-        frontCoverImageUrl: article.frontCoverImageUrl || '',
-        isPublished: article.isPublished || false,
-        tags: Array.isArray(article.tags) ? article.tags.join(', ') : (article.tags || ''),
-      });
-      // console.log('Form reset with content:', article.content);
+
+      // Use setTimeout to ensure the reset happens after the current render cycle
+      setTimeout(() => {
+        reset({
+          title: article.title || '',
+          summary: article.summary || '',
+          content: article.content || '',
+          author: article.author || '',
+          categoryId: article.categoryId || '',
+          siteImageId: article.siteImageId || '',
+          promotionPicId: article.promotionPicId || '',
+          frontCoverImageUrl: article.frontCoverImageUrl || '',
+          sourceArticleId: (article as any).jumpResourceId || '',
+          isPublished: article.isPublished || false,
+          tags: Array.isArray(article.tags) ? article.tags : [],
+        });
+        // console.log('Form reset with content:', article.content);
+      }, 0);
     }
   }, [article, mode, reset]);
+
+  // Separate effect to handle category selection after categories are loaded
+  useEffect(() => {
+    if (article && mode === 'edit' && categories.length > 0 && article.categoryId) {
+      // Only update categoryId if categories are loaded and article has a categoryId
+      setValue('categoryId', article.categoryId);
+    }
+  }, [article, mode, categories, setValue]);
 
   // Word count calculation
   useEffect(() => {
@@ -296,15 +329,43 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
     setIsDirty(true);
   }, [setValue]);
 
+  // Media insertion handlers
+  const handleImageInsert = useCallback((image: any) => {
+    const editor = getEditorInstance(editorRef);
+    if (editor) {
+      insertImageIntoEditor(editor, image, {
+        alignment: 'center',
+        width: 600,
+      });
+    }
+  }, []);
+
+  const handleVideoInsert = useCallback((video: VideoItem) => {
+    const editor = getEditorInstance(editorRef);
+    if (editor) {
+      insertVideoIntoEditor(editor, video, {
+        alignment: 'center',
+        width: 560,
+        height: 315,
+        controls: true,
+      });
+    }
+  }, []);
+
+  const handleSourceArticleInsert = useCallback((article: Article) => {
+    const editor = getEditorInstance(editorRef);
+    if (editor) {
+      insertWeChatReadMoreLink(editor, article);
+    }
+  }, []);
+
   // Handle form submission
   const onSubmit = (data: ArticleFormData) => {
     console.log('Form submitted with data:', data);
     console.log('Form errors:', errors);
 
-    // Convert tags string to array
-    const tagsArray = typeof data.tags === 'string'
-      ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-      : (data.tags || []);
+    // Tags are already an array of IDs
+    const tagsArray = data.tags || [];
 
     if (mode === 'create') {
       console.log('Creating article...');
@@ -317,6 +378,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
         siteImageId: data.siteImageId,
         promotionPicId: data.promotionPicId,
         frontCoverImageUrl: data.frontCoverImageUrl,
+        jumpResourceId: data.sourceArticleId,
         isPublished: data.isPublished || false,
         tags: tagsArray,
       });
@@ -331,6 +393,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
         siteImageId: data.siteImageId,
         promotionPicId: data.promotionPicId,
         frontCoverImageUrl: data.frontCoverImageUrl,
+        jumpResourceId: data.sourceArticleId,
         isPublished: data.isPublished || false,
         tags: tagsArray,
       });
@@ -434,6 +497,8 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                 </Button>
               </div>
 
+
+
               {/* Editor Type Toggle */}
               <Select value={editorType} onValueChange={(value: 'enhanced' | 'real135') => setEditorType(value)}>
                 <SelectTrigger className="w-32">
@@ -496,6 +561,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
               {/* Article Meta */}
               <div className="bg-white border-b border-gray-200 p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left Column */}
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="title">Title *</Label>
@@ -531,8 +597,27 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                         <p className="text-sm text-red-600 mt-1">{errors.summary.message}</p>
                       )}
                     </div>
+
+                    <div>
+                      <Label>Cover Image</Label>
+                      <div className="mt-2">
+                        <ImageSelector
+                          mode="cover"
+                          selectedImageId={watch('siteImageId')}
+                          onImageSelect={(imageId) => {
+                            setValue('siteImageId', imageId || '');
+                            setIsDirty(true);
+                          }}
+                          placeholder="Select cover image"
+                          showUpload={true}
+                          showPreview={true}
+                        />
+                      </div>
+                    </div>
+
                   </div>
 
+                  {/* Right Column */}
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="author">Author *</Label>
@@ -554,8 +639,10 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                     <div>
                       <Label htmlFor="categoryId">Category *</Label>
                       <Select
-                        value={watch('categoryId')}
+                        key={`category-select-${article?.id || 'new'}`}
+                        value={watch('categoryId') || ''}
                         onValueChange={(value) => {
+                          // console.log('Category selected:', value);
                           setValue('categoryId', value);
                           setIsDirty(true);
                         }}
@@ -583,23 +670,87 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                     </div>
 
                     <div>
-                      <Label htmlFor="tags">Tags</Label>
-                      <Input
-                        id="tags"
-                        {...register('tags')}
-                        placeholder="Enter tags separated by commas..."
-                        onChange={(e) => {
-                          register('tags').onChange(e);
-                          setIsDirty(true);
-                        }}
-                      />
+                      <Label>Tags</Label>
+                      <div className="mt-2">
+                        <TagSelector
+                          selectedTagIds={watch('tags') || []}
+                          onTagsChange={(tagIds) => {
+                            setValue('tags', tagIds);
+                            setIsDirty(true);
+                          }}
+                          placeholder="Select tags..."
+                        />
+                      </div>
                     </div>
+
+                    <div>
+                      <Label>WeChat Source Article</Label>
+                      <div className="mt-2">
+                        <SourceArticleSelector
+                          selectedArticleId={watch('sourceArticleId')}
+                          onArticleSelect={(articleId) => {
+                            setValue('sourceArticleId', articleId || '');
+                            setIsDirty(true);
+                          }}
+                          placeholder="Select source article for WeChat read more"
+                          excludeArticleId={id}
+                          allowClear={true}
+                          title="Select Source Article"
+                        />
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               </div>
 
+              {/* Media Insertion Toolbar */}
+              {!showPreview && (
+                <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-medium text-gray-700">Content Editor</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowImageSelector(true)}
+                        className="bg-white shadow-sm hover:shadow-md"
+                        title="Insert Image"
+                        type="button"
+                      >
+                        <ImageIcon className="w-4 h-4 mr-1" />
+                        Image
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowVideoSelector(true)}
+                        className="bg-white shadow-sm hover:shadow-md"
+                        title="Insert Video"
+                        type="button"
+                      >
+                        <VideoIcon className="w-4 h-4 mr-1" />
+                        Video
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowSourceArticleSelector(true)}
+                        className="bg-white shadow-sm hover:shadow-md"
+                        title="Insert WeChat Read More Link"
+                        type="button"
+                      >
+                        <FileText className="w-4 h-4 mr-1" />
+                        Link
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Editor */}
-              <div className="flex-1 bg-white">
+              <div className="flex-1 bg-white relative">
+
                 {showPreview ? (
                   /* Preview Mode */
                   <div className="h-full overflow-auto">
@@ -643,7 +794,7 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                     {(mode === 'create' || (mode === 'edit' && article)) ? (
                       <Reliable135Editor
                         ref={editorRef}
-                        content={watchedContent}
+                        content={watchedContent || ''}
                         onChange={handleContentChange}
                         className="h-full"
                         config={{
@@ -717,39 +868,47 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
                     </div>
                   </div>
 
-                  {/* Images */}
+                  {/* Alternative Cover Image URL */}
                   <div>
-                    <Label>Featured Images</Label>
-                    <div className="mt-2 space-y-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowImageSelector(true)}
-                        className="w-full"
-                      >
-                        <ImageIcon className="w-4 h-4 mr-2" />
-                        Select Images
-                      </Button>
-                      
-                      <div>
-                        <Label htmlFor="frontCoverImageUrl" className="text-sm">Cover Image URL</Label>
-                        <Input
-                          id="frontCoverImageUrl"
-                          {...register('frontCoverImageUrl')}
-                          placeholder="https://..."
-                          className="mt-1"
-                          onChange={(e) => {
-                            register('frontCoverImageUrl').onChange(e);
-                            setIsDirty(true);
-                          }}
-                        />
-                        {errors.frontCoverImageUrl && (
-                          <p className="text-xs text-red-600 mt-1">{errors.frontCoverImageUrl.message}</p>
-                        )}
-                      </div>
+                    <Label>Alternative Cover Image URL</Label>
+                    <div className="mt-2">
+                      <Input
+                        id="frontCoverImageUrl"
+                        {...register('frontCoverImageUrl')}
+                        placeholder="https://example.com/image.jpg"
+                        onChange={(e) => {
+                          register('frontCoverImageUrl').onChange(e);
+                          setIsDirty(true);
+                        }}
+                      />
+                      {errors.frontCoverImageUrl && (
+                        <p className="text-xs text-red-600 mt-1">{errors.frontCoverImageUrl.message}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Optional: Use external image URL instead of uploaded cover image
+                      </p>
                     </div>
                   </div>
+
+                  {/* Promotion Image */}
+                  <div>
+                    <Label>Promotion Image</Label>
+                    <div className="mt-2">
+                      <ImageSelector
+                        mode="single"
+                        selectedImageId={watch('promotionPicId')}
+                        onImageSelect={(imageId) => {
+                          setValue('promotionPicId', imageId || '');
+                          setIsDirty(true);
+                        }}
+                        placeholder="Select promotion image"
+                        showUpload={true}
+                        showPreview={true}
+                      />
+                    </div>
+                  </div>
+
+
 
                   {/* Statistics */}
                   <div>
@@ -778,37 +937,75 @@ const CreateUpdateArticle: React.FC<CreateUpdateArticleProps> = ({ mode }) => {
 
 
 
-      {/* Image Selector Dialog */}
+      {/* Image Insertion Dialog */}
       {showImageSelector && (
         <Dialog open={showImageSelector} onOpenChange={setShowImageSelector}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-6xl z-[9999]" style={{ zIndex: 9999 }}>
             <DialogHeader>
-              <DialogTitle>Select Images</DialogTitle>
+              <DialogTitle>Insert Image into Editor</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Search images..."
-                  className="flex-1"
-                />
-                <Button variant="outline" size="sm">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload New
-                </Button>
-              </div>
+            <ImageSelector
+              contentOnly={true}
+              onImageInsert={(image) => {
+                console.log('Image selected for insertion:', image);
+                handleImageInsert(image);
+                // Add a small delay before closing to ensure insertion completes
+                setTimeout(() => {
+                  setShowImageSelector(false);
+                }, 100);
+              }}
+              placeholder="Select image to insert"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
 
-              <div className="text-center py-8 text-gray-500">
-                <ImageIcon className="h-12 w-12 mx-auto mb-2" />
-                <p>Image selector will be implemented</p>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowImageSelector(false)}
-                  className="mt-4"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
+      {/* Video Insertion Dialog */}
+      {showVideoSelector && (
+        <Dialog open={showVideoSelector} onOpenChange={setShowVideoSelector}>
+          <DialogContent className="max-w-6xl z-[9999]" style={{ zIndex: 9999 }}>
+            <DialogHeader>
+              <DialogTitle>Insert Video into Editor</DialogTitle>
+            </DialogHeader>
+            <VideoSelector
+              contentOnly={true}
+              onVideoInsert={(video) => {
+                console.log('Video selected for insertion:', video);
+                handleVideoInsert(video);
+                // Add a small delay before closing to ensure insertion completes
+                setTimeout(() => {
+                  setShowVideoSelector(false);
+                }, 100);
+              }}
+              placeholder="Select video to insert"
+              mode="insert"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Source Article Insertion Dialog */}
+      {showSourceArticleSelector && (
+        <Dialog open={showSourceArticleSelector} onOpenChange={setShowSourceArticleSelector}>
+          <DialogContent className="max-w-4xl z-[9999]" style={{ zIndex: 9999 }}>
+            <DialogHeader>
+              <DialogTitle>Insert WeChat Read More Link</DialogTitle>
+            </DialogHeader>
+            <SourceArticleSelector
+              contentOnly={true}
+              onArticleInsert={(article) => {
+                console.log('Article selected for insertion:', article);
+                handleSourceArticleInsert(article);
+                // Add a small delay before closing to ensure insertion completes
+                setTimeout(() => {
+                  setShowSourceArticleSelector(false);
+                }, 100);
+              }}
+              placeholder="Select article to link"
+              excludeArticleId={id}
+              allowClear={false}
+              title="Select Article"
+            />
           </DialogContent>
         </Dialog>
       )}
