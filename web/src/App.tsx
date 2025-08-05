@@ -19,6 +19,8 @@ import VideosPage from '@/pages/videos/VideosPage'
 import CloudVideosPage from '@/pages/cloud-videos/CloudVideosPage'
 import NewsPage from '@/pages/news/NewsPage'
 import SurveysPage from '@/pages/surveys/SurveysPage'
+import SurveyTestPage from '@/pages/surveys/SurveyTestPage'
+import SurveyBuilderPage from '@/pages/surveys/SurveyBuilderPage'
 import AttendeesPage from '@/pages/attendees/AttendeesPage'
 import UsersPage from '@/pages/users/UsersPage'
 import WeChatPage from '@/pages/wechat/WeChatPage'
@@ -70,6 +72,8 @@ function App() {
           <Route path="/cloud-videos" element={<DashboardLayout><CloudVideosPage /></DashboardLayout>} />
           <Route path="/news" element={<DashboardLayout><NewsPage /></DashboardLayout>} />
           <Route path="/surveys" element={<DashboardLayout><SurveysPage /></DashboardLayout>} />
+          <Route path="/surveys/test" element={<DashboardLayout><SurveyTestPage /></DashboardLayout>} />
+          <Route path="/surveys/:surveyId/builder" element={<DashboardLayout><SurveyBuilderPage /></DashboardLayout>} />
           <Route path="/attendees" element={<DashboardLayout><AttendeesPage /></DashboardLayout>} />
 
           {/* User Management */}

@@ -4,9 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/zenteam/nextevent-go/internal/application/services"
 	"github.com/zenteam/nextevent-go/internal/infrastructure"
 	"github.com/zenteam/nextevent-go/internal/infrastructure/repositories"
-	"github.com/zenteam/nextevent-go/internal/infrastructure/services"
+	infraServices "github.com/zenteam/nextevent-go/internal/infrastructure/services"
 	"github.com/zenteam/nextevent-go/internal/interfaces/controllers"
 	"github.com/zenteam/nextevent-go/internal/interfaces/middleware"
 	"github.com/zenteam/nextevent-go/internal/simple"
@@ -22,7 +23,7 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	attendeeRepo := repositories.NewGormEventAttendeeRepository(infra.DB)
 
 	// Initialize services
-	eventService := services.NewEventService(eventRepo, userRepo, attendeeRepo, infra.Logger, infra.DB)
+	eventService := infraServices.NewEventService(eventRepo, userRepo, attendeeRepo, infra.Logger, infra.DB)
 	// attendeeService := services.NewAttendeeService(attendeeRepo, eventRepo, userRepo, infra.Logger, infra.DB)
 	// qrCodeService := services.NewQRCodeService(eventRepo, attendeeRepo, infra.RedisClient, infra.Logger)
 
@@ -39,6 +40,10 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	simpleAttendeeController := controllers.NewSimpleAttendeeController(infra.DB, infra.Logger)
 	// imageController := controllers.NewImageController(imageService, imageCategoryService, infra.Logger)
 	// imageCategoryController := controllers.NewImageCategoryController(imageCategoryService, infra.Logger)
+
+	// Initialize survey service and controller
+	surveyService := services.NewSurveyService(infra.DB)
+	surveyController := controllers.NewSurveyController(surveyService, infra.Logger)
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
@@ -203,6 +208,37 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 
 			// Event attendees
 			events.GET("/:id/attendees", simpleAttendeeController.GetEventAttendees)
+		}
+
+		// Survey management endpoints (protected)
+		surveys := v1.Group("/surveys")
+		surveys.Use(middleware.AuthMiddleware(infra.Config, infra.Logger))
+		{
+			surveys.GET("/", surveyController.GetSurveyList)
+			surveys.POST("/", surveyController.CreateSurvey)
+			surveys.GET("/:id", surveyController.GetSurvey)
+			surveys.PUT("/:id", surveyController.UpdateSurvey)
+			surveys.DELETE("/:id", surveyController.DeleteSurvey)
+			surveys.GET("/:id/questions", surveyController.GetSurveyWithQuestions)
+
+			// Question management for surveys
+			surveys.POST("/:surveyId/questions", surveyController.CreateQuestion)
+			surveys.POST("/:surveyId/questions/reorder", surveyController.UpdateQuestionOrder)
+		}
+
+		// Question management endpoints (protected)
+		questions := v1.Group("/questions")
+		questions.Use(middleware.AuthMiddleware(infra.Config, infra.Logger))
+		{
+			questions.GET("/:id", surveyController.GetQuestion)
+			questions.PUT("/:id", surveyController.UpdateQuestion)
+			questions.DELETE("/:id", surveyController.DeleteQuestion)
+		}
+
+		// Public survey endpoints (no authentication required)
+		publicSurveys := v1.Group("/public/surveys")
+		{
+			publicSurveys.GET("/:id", surveyController.GetPublicSurvey)
 		}
 
 		// Attendee management endpoints (protected) - Temporarily disabled

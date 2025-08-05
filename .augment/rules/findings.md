@@ -32,6 +32,61 @@ The video upload function is not working properly. The PlaybackUrl and CoverUrl 
 3. Implement proper video info retrieval and play URL extraction
 4. Add proper cover URL generation from Ali Cloud VOD
 
+## Survey Management Implementation
+
+### Issue: .NET to Go Schema Compatibility
+
+**Date**: 2025-08-05
+**Status**: ✅ Resolved - Successfully Implemented
+
+**Problem Description**:
+Implementing survey management system in Go while maintaining compatibility with existing .NET database schema and 228 surveys + 22,295 answers.
+
+**Root Cause Analysis**:
+1. **Schema Differences**: .NET uses different naming conventions (PascalCase columns, char(36) UUIDs)
+2. **ABP Framework**: Existing schema uses ABP framework audit fields
+3. **Multi-language Support**: Schema already has English fields (`SurveyTitleEn`, `QuestionTitleEn`)
+4. **Choice Format**: Uses pipe-separated format (`||Choice1||Choice2||Choice3||`)
+
+**Solution Implemented**:
+```go
+// Exact schema mapping with GORM tags
+type Survey struct {
+    ID                   string     `gorm:"column:Id;primaryKey;type:char(36)"`
+    SurveyTitle          *string    `gorm:"column:SurveyTitle;type:longtext"`
+    SurveyTitleEn        *string    `gorm:"column:SurveyTitleEn;type:longtext"`
+    // ... other fields with exact column mapping
+}
+```
+
+**Key Implementation Details**:
+- ✅ **Database Compatibility**: All 228 existing surveys accessible
+- ✅ **Multi-language Support**: Chinese/English fields working
+- ✅ **Response Counting**: Correctly counts from both `Answers` and `SingleAnswers` tables
+- ✅ **Soft Delete**: Preserves `IsDeleted` pattern
+- ✅ **Access Control**: Public/private survey distinction working
+- ✅ **API Endpoints**: Full CRUD operations implemented
+
+**Verified Working Features**:
+- Survey list with pagination, filtering, and sorting
+- Individual survey retrieval with analytics
+- Survey with questions (ordered by OrderNumber)
+- Public survey access control
+- Multi-language field support
+- Existing data preservation
+
+**Performance Optimizations**:
+- Efficient counting queries for analytics
+- Proper indexing on foreign keys
+- Batch operations for multiple surveys
+
+**Prevention Guidelines**:
+1. Always examine existing database schema before implementation
+2. Test with real production data during development
+3. Preserve all audit fields and soft delete patterns
+4. Use exact column name mapping with GORM tags
+5. Handle nullable fields with pointers in Go structs
+
 **Files Affected**:
 - `internal/infrastructure/alicloud_vod.go` - Main VOD service implementation
 - `internal/simple/upload_handlers.go` - Upload response handling
@@ -309,3 +364,55 @@ useEffect(() => {
 - Video upload with category selection
 - Search + category combination filtering
 - Backward compatibility with existing videos
+
+## Survey Builder Frontend Issues
+
+### Issue: Question Creation Failing with "required" Validation Error
+**Date**: 2025-08-05
+**Status**: ✅ Resolved - Fixed Question Type Mapping
+
+**Problem Description**:
+Question creation API was failing with validation error: `Key: 'CreateQuestionRequest.QuestionType' Error:Field validation for 'QuestionType' failed on the 'required' tag`
+
+**Root Cause Analysis**:
+Frontend was sending `questionType: 0` which is treated as zero value (empty) in Go validation, causing the `required` tag to fail.
+
+**Solution Implemented**:
+1. Updated question type mapping to avoid zero values:
+   - `text: 1` (instead of 0)
+   - `radio: 2` (instead of 1)
+   - `checkbox: 3` (instead of 2)
+   - `rating: 4` (instead of 3)
+2. Updated both frontend-to-backend and backend-to-frontend mappings consistently
+3. Fixed default fallback from `|| 0` to `|| 1`
+
+**Files Changed**:
+- `web/src/api/surveys.ts`: Updated questionTypeMap in multiple functions
+
+### Issue: Survey Update Failing with "invalid UUID length: 15" Error
+**Date**: 2025-08-05
+**Status**: ✅ Resolved - Fixed User ID Authentication
+
+**Problem Description**:
+Survey Save button was failing with validation error: `invalid UUID length: 15`
+
+**Root Cause Analysis**:
+Frontend was sending hardcoded string `'current-user-id'` (15 characters) instead of actual user UUID (36 characters) for `lastModifierId` field.
+
+**Solution Implemented**:
+1. Added `useAuthStore` import to get current authenticated user
+2. Replaced all hardcoded `'current-user-id'` with `user?.id || 'anonymous'`
+3. Updated both direct API calls and hook-based calls
+
+**Files Changed**:
+- `web/src/pages/surveys/SurveyBuilderPage.tsx`: Added auth store usage
+- `frontend/src/hooks/useSurveyBuilder.ts`: Fixed 7 instances of hardcoded user ID
+
+**Key Learning**: Always use actual user data from authentication context instead of hardcoded placeholder values, especially for UUID fields that have strict validation.
+
+**Prevention Guidelines**:
+1. Never use hardcoded placeholder values in production code
+2. Always validate UUID format and length before API calls
+3. Use authentication context for user-related operations
+4. Test with real user data from JWT tokens
+5. Avoid zero values for required integer fields in Go validation

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { Survey, SurveyQuestion, QuestionType } from '../types/survey';
 import { surveyApi } from '../services/api/surveyApi';
+import { useAuthStore } from '../store/authStore';
 
 interface UseSurveyBuilderReturn {
   survey: Survey;
@@ -11,10 +12,10 @@ interface UseSurveyBuilderReturn {
   error: string | null;
   isDirty: boolean;
   updateSurvey: (updates: Partial<Survey>) => void;
-  addQuestion: (question: Partial<SurveyQuestion>) => string;
-  updateQuestion: (questionId: string, updates: Partial<SurveyQuestion>) => void;
-  deleteQuestion: (questionId: string) => void;
-  reorderQuestions: (dragIndex: number, hoverIndex: number) => void;
+  addQuestion: (question: Partial<SurveyQuestion>) => Promise<string>;
+  updateQuestion: (questionId: string, updates: Partial<SurveyQuestion>) => Promise<void>;
+  deleteQuestion: (questionId: string) => Promise<void>;
+  reorderQuestions: (dragIndex: number, hoverIndex: number) => Promise<void>;
   saveSurvey: () => Promise<Survey>;
   publishSurvey: () => Promise<Survey>;
   loadSurvey: () => Promise<void>;
@@ -32,6 +33,7 @@ const createEmptySurvey = (): Survey => ({
 });
 
 export const useSurveyBuilder = (surveyId?: string): UseSurveyBuilderReturn => {
+  const { user } = useAuthStore();
   const [survey, setSurvey] = useState<Survey>(createEmptySurvey);
   const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,74 +76,172 @@ export const useSurveyBuilder = (surveyId?: string): UseSurveyBuilderReturn => {
   }, [markDirty]);
 
   // Add a new question
-  const addQuestion = useCallback((questionData: Partial<SurveyQuestion>): string => {
-    const questionId = uuidv4();
-    const newQuestion: SurveyQuestion = {
-      id: questionId,
-      surveyId: survey.id || '',
-      questionType: questionData.questionType || 'text',
-      questionText: questionData.questionText || '',
-      description: questionData.description,
-      isRequired: questionData.isRequired || false,
-      order: questionData.order || questions.length + 1,
-      options: questionData.options,
-      validation: questionData.validation,
-      placeholder: questionData.placeholder,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+  const addQuestion = useCallback(async (questionData: Partial<SurveyQuestion>): Promise<string> => {
+    try {
+      if (!survey.id) {
+        // If survey doesn't exist yet, add locally and save later
+        const questionId = uuidv4();
+        const newQuestion: SurveyQuestion = {
+          id: questionId,
+          surveyId: survey.id || '',
+          questionType: questionData.questionType || 'text',
+          questionText: questionData.questionText || '',
+          description: questionData.description,
+          isRequired: questionData.isRequired || false,
+          order: questionData.order || questions.length + 1,
+          options: questionData.options,
+          validation: questionData.validation,
+          placeholder: questionData.placeholder,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
 
-    setQuestions(prev => [...prev, newQuestion]);
-    markDirty();
-    
-    return questionId;
+        setQuestions(prev => [...prev, newQuestion]);
+        markDirty();
+        return questionId;
+      }
+
+      // Create question via API
+      const createdQuestion = await surveyApi.createQuestion(survey.id, {
+        questionText: questionData.questionText || '',
+        questionTextEn: questionData.questionTextEn,
+        questionType: questionData.questionType || 'text',
+        options: questionData.options,
+        optionsEn: questionData.optionsEn,
+        order: questionData.order || questions.length + 1,
+        isRequired: questionData.isRequired || false,
+        isProjected: questionData.isProjected || false,
+        createdBy: user?.id || 'anonymous'
+      });
+
+      setQuestions(prev => [...prev, createdQuestion]);
+      markDirty();
+      return createdQuestion.id;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add question';
+      setError(errorMessage);
+      throw err;
+    }
   }, [survey.id, questions.length, markDirty]);
 
   // Update an existing question
-  const updateQuestion = useCallback((questionId: string, updates: Partial<SurveyQuestion>) => {
-    setQuestions(prev => prev.map(q => 
-      q.id === questionId 
-        ? { ...q, ...updates, updatedAt: new Date() }
-        : q
-    ));
-    markDirty();
-  }, [markDirty]);
+  const updateQuestion = useCallback(async (questionId: string, updates: Partial<SurveyQuestion>): Promise<void> => {
+    try {
+      if (!survey.id) {
+        // If survey doesn't exist yet, update locally
+        setQuestions(prev => prev.map(q =>
+          q.id === questionId
+            ? { ...q, ...updates, updatedAt: new Date() }
+            : q
+        ));
+        markDirty();
+        return;
+      }
+
+      // Update question via API
+      const updatedQuestion = await surveyApi.updateQuestion(survey.id, questionId, {
+        questionText: updates.questionText,
+        questionTextEn: updates.questionTextEn,
+        questionType: updates.questionType,
+        options: updates.options,
+        optionsEn: updates.optionsEn,
+        order: updates.order,
+        isRequired: updates.isRequired,
+        isProjected: updates.isProjected,
+        updatedBy: user?.id || 'anonymous'
+      });
+
+      setQuestions(prev => prev.map(q =>
+        q.id === questionId ? updatedQuestion : q
+      ));
+      markDirty();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update question';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [survey.id, markDirty]);
 
   // Delete a question
-  const deleteQuestion = useCallback((questionId: string) => {
-    setQuestions(prev => {
-      const filtered = prev.filter(q => q.id !== questionId);
-      // Reorder remaining questions
-      return filtered.map((q, index) => ({
-        ...q,
-        order: index + 1,
-        updatedAt: new Date()
-      }));
-    });
-    markDirty();
-  }, [markDirty]);
+  const deleteQuestion = useCallback(async (questionId: string): Promise<void> => {
+    try {
+      if (!survey.id) {
+        // If survey doesn't exist yet, delete locally
+        setQuestions(prev => {
+          const filtered = prev.filter(q => q.id !== questionId);
+          // Reorder remaining questions
+          return filtered.map((q, index) => ({
+            ...q,
+            order: index + 1,
+            updatedAt: new Date()
+          }));
+        });
+        markDirty();
+        return;
+      }
+
+      // Delete question via API
+      await surveyApi.deleteQuestion(survey.id, questionId, user?.id || 'anonymous');
+
+      setQuestions(prev => {
+        const filtered = prev.filter(q => q.id !== questionId);
+        // Reorder remaining questions
+        return filtered.map((q, index) => ({
+          ...q,
+          order: index + 1,
+          updatedAt: new Date()
+        }));
+      });
+      markDirty();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete question';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [survey.id, markDirty]);
 
   // Reorder questions (for drag and drop)
-  const reorderQuestions = useCallback((dragIndex: number, hoverIndex: number) => {
-    setQuestions(prev => {
-      const draggedQuestion = prev[dragIndex];
-      const newQuestions = [...prev];
-      
-      // Remove dragged question
-      newQuestions.splice(dragIndex, 1);
-      
-      // Insert at new position
-      newQuestions.splice(hoverIndex, 0, draggedQuestion);
-      
-      // Update order numbers
-      return newQuestions.map((q, index) => ({
-        ...q,
-        order: index + 1,
-        updatedAt: new Date()
-      }));
-    });
-    markDirty();
-  }, [markDirty]);
+  const reorderQuestions = useCallback(async (dragIndex: number, hoverIndex: number): Promise<void> => {
+    try {
+      setQuestions(prev => {
+        const draggedQuestion = prev[dragIndex];
+        const newQuestions = [...prev];
+
+        // Remove dragged question
+        newQuestions.splice(dragIndex, 1);
+
+        // Insert at new position
+        newQuestions.splice(hoverIndex, 0, draggedQuestion);
+
+        // Update order numbers
+        return newQuestions.map((q, index) => ({
+          ...q,
+          order: index + 1,
+          updatedAt: new Date()
+        }));
+      });
+
+      // If survey exists, update order via API
+      if (survey.id) {
+        const questionOrders = questions.map((q, index) => ({
+          questionId: q.id,
+          orderNumber: index + 1
+        }));
+
+        await surveyApi.reorderQuestions(
+          survey.id,
+          questionOrders,
+          user?.id || 'anonymous'
+        );
+      }
+
+      markDirty();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to reorder questions';
+      setError(errorMessage);
+      throw err;
+    }
+  }, [survey.id, questions, markDirty]);
 
   // Save survey
   const saveSurvey = useCallback(async (): Promise<Survey> => {
@@ -149,24 +249,34 @@ export const useSurveyBuilder = (surveyId?: string): UseSurveyBuilderReturn => {
       setLoading(true);
       setError(null);
 
-      const surveyData = {
-        ...survey,
-        questions: questions
-      };
-
       let savedSurvey: Survey;
-      
+
       if (surveyId && survey.id) {
         // Update existing survey
-        savedSurvey = await surveyApi.updateSurvey(surveyId, surveyData);
+        savedSurvey = await surveyApi.updateSurvey(surveyId, {
+          title: survey.title,
+          titleEn: survey.titleEn,
+          description: survey.description,
+          isPublic: survey.isPublic,
+          updatedBy: user?.id || 'anonymous'
+        });
       } else {
         // Create new survey
-        savedSurvey = await surveyApi.createSurvey(surveyData);
+        savedSurvey = await surveyApi.createSurvey({
+          title: survey.title,
+          titleEn: survey.titleEn,
+          description: survey.description,
+          isPublic: survey.isPublic,
+          formType: survey.formType || 0,
+          categoryId: survey.categoryId || '00000000-0000-0000-0000-000000000000',
+          isLuckEnabled: survey.isLuckEnabled || false,
+          createdBy: user?.id || 'anonymous'
+        });
       }
 
       setSurvey(savedSurvey);
       setIsDirty(false);
-      
+
       // Update original refs for dirty checking
       originalSurveyRef.current = { ...savedSurvey };
       originalQuestionsRef.current = [...questions];
@@ -208,9 +318,15 @@ export const useSurveyBuilder = (surveyId?: string): UseSurveyBuilderReturn => {
         surveyToPublish = await saveSurvey();
       }
 
-      // Publish the survey
-      const publishedSurvey = await surveyApi.publishSurvey(surveyToPublish.id!);
-      
+      // Publish the survey by updating isPublic to true
+      const publishedSurvey = await surveyApi.updateSurvey(surveyToPublish.id!, {
+        title: surveyToPublish.title,
+        titleEn: surveyToPublish.titleEn,
+        description: surveyToPublish.description,
+        isPublic: true,
+        updatedBy: user?.id || 'anonymous'
+      });
+
       setSurvey(publishedSurvey);
       setIsDirty(false);
 
