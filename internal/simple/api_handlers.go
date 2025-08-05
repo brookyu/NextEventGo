@@ -849,8 +849,8 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 	categoryId := c.Query("categoryId")
 	search := c.Query("search")
 
-	// Build query for videos from VideoUploads table (Ali Cloud VOD integration)
-	query := h.db.Table("VideoUploads").Where("VideoUploads.IsDeleted = 0")
+	// Build query for videos from CloudVideos table (Cloud Video Management)
+	query := h.db.Table("CloudVideos").Where("CloudVideos.IsDeleted = 0")
 
 	// Apply category filter if provided
 	if categoryId != "" {
@@ -859,14 +859,14 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 
 	// Apply search filter if provided
 	if search != "" {
-		query = query.Where("(Title LIKE ? OR Description LIKE ?)", "%"+search+"%", "%"+search+"%")
+		query = query.Where("(Title LIKE ? OR Summary LIKE ?)", "%"+search+"%", "%"+search+"%")
 	}
 
 	var rawVideos []map[string]interface{}
 	result := query.
-		Select("VideoUploads.*, Categories.Title as CategoryTitle").
-		Joins("LEFT JOIN Categories ON VideoUploads.CategoryId = Categories.Id AND Categories.IsDeleted = 0 AND Categories.ResourceType = 3").
-		Order("VideoUploads.CreationTime DESC").
+		Select("CloudVideos.*, Categories.Title as CategoryTitle").
+		Joins("LEFT JOIN Categories ON CloudVideos.CategoryId = Categories.Id AND Categories.IsDeleted = 0 AND Categories.ResourceType = 3").
+		Order("CloudVideos.CreationTime DESC").
 		Limit(100).
 		Find(&rawVideos)
 
@@ -881,22 +881,38 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 		video := map[string]interface{}{
 			"id":          rawVideo["Id"],
 			"title":       rawVideo["Title"],
-			"description": rawVideo["Description"], // VideoUploads uses Description
-			"url":         rawVideo["Url"],
+			"description": rawVideo["Summary"], // CloudVideos uses Summary
+			"url":         rawVideo["CloudUrl"],
 			"playbackUrl": rawVideo["PlaybackUrl"],
 			"cloudUrl":    rawVideo["CloudUrl"],
 			"duration":    rawVideo["Duration"],
 			"created_at":  rawVideo["CreationTime"],
 			"updated_at":  rawVideo["LastModificationTime"],
-			"author":      rawVideo["Author"],
-			"views":       rawVideo["ViewCount"],
+			"author":      "System", // CloudVideos doesn't have Author field
+			"views":       rawVideo["ReadCount"],
 			"status":      rawVideo["Status"],
-			"size":        rawVideo["Size"],
-			"format":      rawVideo["Format"],
+			"size":        0,     // CloudVideos doesn't track file size
+			"format":      "mp4", // Default format
 			"videoType":   rawVideo["VideoType"],
 			"quality":     rawVideo["Quality"],
 			"isOpen":      rawVideo["IsOpen"],
 			"categoryId":  rawVideo["CategoryId"],
+			// New Cloud Video Management fields
+			"streamKey":       rawVideo["StreamKey"],
+			"requireAuth":     rawVideo["RequireAuth"],
+			"allowDownload":   rawVideo["AllowDownload"],
+			"likeCount":       rawVideo["LikeCount"],
+			"shareCount":      rawVideo["ShareCount"],
+			"commentCount":    rawVideo["CommentCount"],
+			"watchTime":       rawVideo["WatchTime"],
+			"enableComments":  rawVideo["EnableComments"],
+			"enableLikes":     rawVideo["EnableLikes"],
+			"enableSharing":   rawVideo["EnableSharing"],
+			"enableAnalytics": rawVideo["EnableAnalytics"],
+			"metaTitle":       rawVideo["MetaTitle"],
+			"metaDescription": rawVideo["MetaDescription"],
+			"keywords":        rawVideo["Keywords"],
+			"startTime":       rawVideo["StartTime"],
 		}
 
 		// Add category information if available
@@ -910,35 +926,17 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 			}
 		}
 
-		// Use CoverUrl field from VideoUploads table (Ali Cloud VOD integration)
-		if rawVideo["CoverUrl"] != nil {
-			if coverUrlStr, ok := rawVideo["CoverUrl"].(string); ok && coverUrlStr != "" {
-				video["coverImage"] = coverUrlStr
-				video["thumbnail"] = coverUrlStr
-				video["thumbnailUrl"] = coverUrlStr
+		// Use CoverPath field from CloudVideos table
+		if rawVideo["CoverPath"] != nil {
+			if coverPathStr, ok := rawVideo["CoverPath"].(string); ok && coverPathStr != "" {
+				video["coverImage"] = coverPathStr
+				video["thumbnail"] = coverPathStr
+				video["thumbnailUrl"] = coverPathStr
 			}
 		}
 
-		// Check if PlaybackUrl or CoverUrl is missing and try to refresh from Ali Cloud
-		playbackUrl, _ := rawVideo["PlaybackUrl"].(string)
-		coverUrl, _ := rawVideo["CoverUrl"].(string)
-		remoteVideoId, _ := rawVideo["RemoteVideoId"].(string)
-
-		if (playbackUrl == "" || coverUrl == "") && remoteVideoId != "" {
-			// Try to refresh URLs from Ali Cloud VOD
-			refreshedUrls := h.refreshVideoUrlsFromAliCloud(remoteVideoId, rawVideo["Id"].(string))
-			if refreshedUrls != nil {
-				if refreshedUrls["playbackUrl"] != "" {
-					video["playbackUrl"] = refreshedUrls["playbackUrl"]
-					video["cloudUrl"] = refreshedUrls["playbackUrl"]
-				}
-				if refreshedUrls["coverUrl"] != "" {
-					video["coverImage"] = refreshedUrls["coverUrl"]
-					video["thumbnail"] = refreshedUrls["coverUrl"]
-					video["thumbnailUrl"] = refreshedUrls["coverUrl"]
-				}
-			}
-		}
+		// For CloudVideos, we don't need to refresh from Ali Cloud VOD
+		// The URLs are managed directly in the CloudVideos table
 
 		videos[i] = video
 	}
@@ -946,6 +944,96 @@ func (h *APIHandlers) GetVideos(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"data":  videos,
 		"count": len(videos),
+	})
+}
+
+// GetVideo returns a single video by ID
+func (h *APIHandlers) GetVideo(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(500, gin.H{"error": "Database not connected"})
+		return
+	}
+
+	videoId := c.Param("id")
+	if videoId == "" {
+		c.JSON(400, gin.H{"error": "Video ID is required"})
+		return
+	}
+
+	// Query CloudVideos table for the specific video
+	var rawVideos []map[string]interface{}
+	result := h.db.Table("CloudVideos").
+		Select("CloudVideos.*, Categories.Title as CategoryTitle").
+		Joins("LEFT JOIN Categories ON CloudVideos.CategoryId = Categories.Id AND Categories.IsDeleted = 0 AND Categories.ResourceType = 3").
+		Where("CloudVideos.Id = ? AND CloudVideos.IsDeleted = 0", videoId).
+		Find(&rawVideos)
+
+	if len(rawVideos) == 0 {
+		c.JSON(404, gin.H{"error": "Video not found"})
+		return
+	}
+
+	rawVideo := rawVideos[0]
+
+	if result.Error != nil {
+		c.JSON(500, gin.H{"error": result.Error.Error()})
+		return
+	}
+
+	// Map database fields to frontend expected fields
+	video := map[string]interface{}{
+		"id":          rawVideo["Id"],
+		"title":       rawVideo["Title"],
+		"description": rawVideo["Summary"], // CloudVideos uses Summary
+		"url":         rawVideo["CloudUrl"],
+		"playbackUrl": rawVideo["PlaybackUrl"],
+		"cloudUrl":    rawVideo["CloudUrl"],
+		"duration":    rawVideo["Duration"],
+		"created_at":  rawVideo["CreationTime"],
+		"updated_at":  rawVideo["LastModificationTime"],
+		"author":      "System", // CloudVideos doesn't have Author field
+		"views":       rawVideo["ReadCount"],
+		"status":      rawVideo["Status"],
+		"size":        0,     // CloudVideos doesn't track file size
+		"format":      "mp4", // Default format
+		"videoType":   rawVideo["VideoType"],
+		"quality":     rawVideo["Quality"],
+		"isOpen":      rawVideo["IsOpen"],
+		"categoryId":  rawVideo["CategoryId"],
+		// New Cloud Video Management fields
+		"streamKey":       rawVideo["StreamKey"],
+		"requireAuth":     rawVideo["RequireAuth"],
+		"allowDownload":   rawVideo["AllowDownload"],
+		"likeCount":       rawVideo["LikeCount"],
+		"shareCount":      rawVideo["ShareCount"],
+		"commentCount":    rawVideo["CommentCount"],
+		"watchTime":       rawVideo["WatchTime"],
+		"enableComments":  rawVideo["EnableComments"],
+		"enableLikes":     rawVideo["EnableLikes"],
+		"enableSharing":   rawVideo["EnableSharing"],
+		"enableAnalytics": rawVideo["EnableAnalytics"],
+	}
+
+	// Add category information if available
+	if rawVideo["CategoryTitle"] != nil {
+		video["category"] = map[string]interface{}{
+			"id":    rawVideo["CategoryId"],
+			"title": rawVideo["CategoryTitle"],
+			"name":  rawVideo["CategoryTitle"],
+		}
+	}
+
+	// Use CoverPath field from CloudVideos table
+	if rawVideo["CoverPath"] != nil {
+		if coverPathStr, ok := rawVideo["CoverPath"].(string); ok && coverPathStr != "" {
+			video["coverImage"] = coverPathStr
+			video["thumbnail"] = coverPathStr
+			video["thumbnailUrl"] = coverPathStr
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"data": video,
 	})
 }
 
@@ -1225,4 +1313,284 @@ func (h *APIHandlers) Login(c *gin.Context) {
 	} else {
 		c.JSON(401, gin.H{"error": "Invalid credentials"})
 	}
+}
+
+// Cloud Video Session API handlers
+
+// GetVideoSessions returns list of video sessions with analytics
+func (h *APIHandlers) GetVideoSessions(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(200, gin.H{
+			"data":    []gin.H{},
+			"message": "Database not connected",
+		})
+		return
+	}
+
+	// Get query parameters
+	videoID := c.Query("videoId")
+	userID := c.Query("userId")
+	limitStr := c.DefaultQuery("limit", "50")
+
+	// Parse limit
+	limit := 50
+	if limitInt, err := strconv.Atoi(limitStr); err == nil && limitInt > 0 {
+		limit = limitInt
+	}
+
+	// Build query for video sessions
+	query := h.db.Table("CloudVideoSessions").Where("1 = 1")
+
+	// Apply filters
+	if videoID != "" {
+		query = query.Where("CloudVideoId = ?", videoID)
+	}
+	if userID != "" {
+		query = query.Where("UserId = ?", userID)
+	}
+
+	// Execute query
+	var rawSessions []map[string]interface{}
+	result := query.
+		Select("CloudVideoSessions.*, CloudVideos.Title as VideoTitle").
+		Joins("LEFT JOIN CloudVideos ON CloudVideoSessions.CloudVideoId = CloudVideos.Id").
+		Order("CloudVideoSessions.StartTime DESC").
+		Limit(limit).
+		Find(&rawSessions)
+
+	if result.Error != nil {
+		c.JSON(500, gin.H{
+			"error":   "Database query failed",
+			"message": result.Error.Error(),
+		})
+		return
+	}
+
+	// Map database fields to frontend expected fields
+	sessions := make([]map[string]interface{}, len(rawSessions))
+	for i, rawSession := range rawSessions {
+		sessions[i] = map[string]interface{}{
+			"id":                   rawSession["Id"],
+			"videoId":              rawSession["CloudVideoId"],
+			"videoTitle":           rawSession["VideoTitle"],
+			"userId":               rawSession["UserId"],
+			"sessionId":            rawSession["SessionId"],
+			"startTime":            rawSession["StartTime"],
+			"endTime":              rawSession["EndTime"],
+			"lastActivity":         rawSession["LastActivity"],
+			"currentPosition":      rawSession["CurrentPosition"],
+			"watchedDuration":      rawSession["WatchedDuration"],
+			"playbackSpeed":        rawSession["PlaybackSpeed"],
+			"quality":              rawSession["Quality"],
+			"completionPercentage": rawSession["CompletionPercentage"],
+			"isCompleted":          rawSession["IsCompleted"],
+			"completedAt":          rawSession["CompletedAt"],
+			"pauseCount":           rawSession["PauseCount"],
+			"seekCount":            rawSession["SeekCount"],
+			"replayCount":          rawSession["ReplayCount"],
+			"volumeLevel":          rawSession["VolumeLevel"],
+			"ipAddress":            rawSession["IPAddress"],
+			"userAgent":            rawSession["UserAgent"],
+			"deviceType":           rawSession["DeviceType"],
+			"browser":              rawSession["Browser"],
+			"os":                   rawSession["OS"],
+			"screenSize":           rawSession["ScreenSize"],
+			"bandwidth":            rawSession["Bandwidth"],
+			"country":              rawSession["Country"],
+			"region":               rawSession["Region"],
+			"city":                 rawSession["City"],
+			"timezone":             rawSession["Timezone"],
+			"engagementScore":      rawSession["EngagementScore"],
+			"attentionSpan":        rawSession["AttentionSpan"],
+			"referrer":             rawSession["Referrer"],
+			"metadata":             rawSession["Metadata"],
+			"wechatOpenId":         rawSession["WeChatOpenId"],
+			"wechatUnionId":        rawSession["WeChatUnionId"],
+			"creationTime":         rawSession["CreationTime"],
+			"lastModificationTime": rawSession["LastModificationTime"],
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"data":    sessions,
+		"count":   len(sessions),
+		"message": "Video sessions retrieved successfully",
+	})
+}
+
+// CreateVideoSession creates a new video session
+func (h *APIHandlers) CreateVideoSession(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(500, gin.H{
+			"error":   "Database not connected",
+			"message": "Database connection is not available",
+		})
+		return
+	}
+
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"error":   "Invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Generate new session ID
+	sessionID := fmt.Sprintf("session_%d", time.Now().Unix())
+	if req["sessionId"] != nil {
+		sessionID = req["sessionId"].(string)
+	}
+
+	// Create session record
+	session := map[string]interface{}{
+		"Id":                   uuid.New().String(),
+		"CloudVideoId":         req["videoId"],
+		"UserId":               req["userId"],
+		"SessionId":            sessionID,
+		"StartTime":            time.Now(),
+		"LastActivity":         time.Now(),
+		"CurrentPosition":      0,
+		"WatchedDuration":      0,
+		"PlaybackSpeed":        1.0,
+		"Quality":              req["quality"],
+		"CompletionPercentage": 0,
+		"IsCompleted":          false,
+		"PauseCount":           0,
+		"SeekCount":            0,
+		"ReplayCount":          0,
+		"VolumeLevel":          100,
+		"IPAddress":            c.ClientIP(),
+		"UserAgent":            c.GetHeader("User-Agent"),
+		"DeviceType":           req["deviceType"],
+		"Browser":              req["browser"],
+		"OS":                   req["os"],
+		"ScreenSize":           req["screenSize"],
+		"Bandwidth":            req["bandwidth"],
+		"Country":              req["country"],
+		"Region":               req["region"],
+		"City":                 req["city"],
+		"Timezone":             req["timezone"],
+		"EngagementScore":      0,
+		"AttentionSpan":        0,
+		"Referrer":             c.GetHeader("Referer"),
+		"Metadata":             req["metadata"],
+		"WeChatOpenId":         req["wechatOpenId"],
+		"WeChatUnionId":        req["wechatUnionId"],
+		"CreationTime":         time.Now(),
+		"LastModificationTime": time.Now(),
+	}
+
+	// Insert session into database
+	result := h.db.Table("CloudVideoSessions").Create(&session)
+	if result.Error != nil {
+		c.JSON(500, gin.H{
+			"error":   "Failed to create session",
+			"message": result.Error.Error(),
+		})
+		return
+	}
+
+	c.JSON(201, gin.H{
+		"data":    session,
+		"message": "Video session created successfully",
+	})
+}
+
+// UpdateVideoSession updates an existing video session
+func (h *APIHandlers) UpdateVideoSession(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(500, gin.H{
+			"error":   "Database not connected",
+			"message": "Database connection is not available",
+		})
+		return
+	}
+
+	sessionID := c.Param("id")
+	if sessionID == "" {
+		c.JSON(400, gin.H{
+			"error":   "Missing session ID",
+			"message": "Session ID is required",
+		})
+		return
+	}
+
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{
+			"error":   "Invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	// Prepare update data
+	updateData := map[string]interface{}{
+		"LastActivity":         time.Now(),
+		"LastModificationTime": time.Now(),
+	}
+
+	// Add fields that can be updated
+	if req["currentPosition"] != nil {
+		updateData["CurrentPosition"] = req["currentPosition"]
+	}
+	if req["watchedDuration"] != nil {
+		updateData["WatchedDuration"] = req["watchedDuration"]
+	}
+	if req["playbackSpeed"] != nil {
+		updateData["PlaybackSpeed"] = req["playbackSpeed"]
+	}
+	if req["quality"] != nil {
+		updateData["Quality"] = req["quality"]
+	}
+	if req["completionPercentage"] != nil {
+		updateData["CompletionPercentage"] = req["completionPercentage"]
+		// Auto-complete if over 90%
+		if percentage, ok := req["completionPercentage"].(float64); ok && percentage >= 90 {
+			updateData["IsCompleted"] = true
+			updateData["CompletedAt"] = time.Now()
+		}
+	}
+	if req["pauseCount"] != nil {
+		updateData["PauseCount"] = req["pauseCount"]
+	}
+	if req["seekCount"] != nil {
+		updateData["SeekCount"] = req["seekCount"]
+	}
+	if req["replayCount"] != nil {
+		updateData["ReplayCount"] = req["replayCount"]
+	}
+	if req["volumeLevel"] != nil {
+		updateData["VolumeLevel"] = req["volumeLevel"]
+	}
+	if req["engagementScore"] != nil {
+		updateData["EngagementScore"] = req["engagementScore"]
+	}
+	if req["attentionSpan"] != nil {
+		updateData["AttentionSpan"] = req["attentionSpan"]
+	}
+
+	// Update session in database
+	result := h.db.Table("CloudVideoSessions").Where("Id = ?", sessionID).Updates(updateData)
+	if result.Error != nil {
+		c.JSON(500, gin.H{
+			"error":   "Failed to update session",
+			"message": result.Error.Error(),
+		})
+		return
+	}
+
+	if result.RowsAffected == 0 {
+		c.JSON(404, gin.H{
+			"error":   "Session not found",
+			"message": "No session found with the provided ID",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "Video session updated successfully",
+	})
 }

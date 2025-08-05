@@ -99,6 +99,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           keepMarks: true,
           keepAttributes: false,
         },
+        // Exclude the default link extension to avoid conflicts
+        link: false,
       }),
       Image.configure({
         HTMLAttributes: {

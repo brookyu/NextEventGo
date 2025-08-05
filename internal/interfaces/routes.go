@@ -56,6 +56,7 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	// Initialize API handlers for missing endpoints
 	apiHandlers := simple.NewAPIHandlers(infra.DB, infra.Config)
 	uploadHandlers := simple.NewUploadHandlers(infra.DB, infra.Config)
+	cloudVideoHandlers := simple.NewCloudVideoHandlers(infra.DB)
 
 	// Setup API v2 routes (restored from main.bak)
 	api := router.Group("/api/v2")
@@ -86,6 +87,19 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 		api.GET("/videos/test-credentials", uploadHandlers.TestUploadCredentials)
 		api.GET("/videos/categories", apiHandlers.GetVideoCategories)
 
+		// Cloud Video Management endpoints
+		api.GET("/cloud-videos", cloudVideoHandlers.GetCloudVideos)
+		api.GET("/cloud-videos/:id", cloudVideoHandlers.GetCloudVideo)
+		api.POST("/cloud-videos", cloudVideoHandlers.CreateCloudVideo)
+		api.PUT("/cloud-videos/:id", cloudVideoHandlers.UpdateCloudVideo)
+		api.DELETE("/cloud-videos/:id", cloudVideoHandlers.DeleteCloudVideo)
+		api.POST("/cloud-videos/:id/generate-stream-key", cloudVideoHandlers.GenerateStreamKey)
+
+		// Video Session endpoints
+		api.GET("/video-sessions", apiHandlers.GetVideoSessions)
+		api.POST("/video-sessions", apiHandlers.CreateVideoSession)
+		api.PUT("/video-sessions/:id", apiHandlers.UpdateVideoSession)
+
 		// News endpoint
 		api.GET("/news", apiHandlers.GetNews)
 
@@ -107,6 +121,26 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 
 		// Image categories endpoints
 		apiv1.GET("/image-categories", apiHandlers.GetCategories)
+
+		// Tags endpoints (proxy to v2)
+		apiv1.GET("/tags", apiHandlers.GetTags)
+
+		// Categories endpoints (proxy to v2)
+		apiv1.GET("/categories", apiHandlers.GetCategories)
+
+		// Videos endpoints (proxy to v2)
+		apiv1.GET("/videos", apiHandlers.GetVideos)
+		apiv1.GET("/videos/:id", apiHandlers.GetVideo)
+		apiv1.POST("/videos/upload", uploadHandlers.UploadVideo)
+		apiv1.GET("/videos/:id/status", uploadHandlers.GetVideoStatus)
+		apiv1.GET("/videos/categories", apiHandlers.GetVideoCategories)
+
+		// Articles endpoints (proxy to v2) - direct paths
+		apiv1.GET("/articles", apiHandlers.GetArticles)
+		apiv1.GET("/articles/:id", apiHandlers.GetArticle)
+		apiv1.POST("/articles", apiHandlers.CreateArticle)
+		apiv1.PUT("/articles/:id", apiHandlers.UpdateArticle)
+		apiv1.DELETE("/articles/:id", apiHandlers.DeleteArticle)
 
 		// Articles endpoints (proxy to v2) - using different paths to avoid conflicts
 		apiv1.GET("/content/articles", apiHandlers.GetArticles)
