@@ -1101,3 +1101,61 @@ Followed established validation patterns found in codebase:
 4. **Implement Defensive Programming**: Add null checks and proper error handling
 5. **Test with Real Data**: Validate with actual scheduling scenarios
 6. **Document Security Decisions**: Explain key generation logic for future reference
+
+## Frontend Architecture Cleanup
+
+### Issue: Orphaned Frontend Directory with Incompatible Tech Stack
+
+**Date**: 2025-01-08
+**Status**: ✅ Resolved - Successfully Removed
+
+**Problem Description**:
+The project contained a separate `frontend/` directory with comprehensive survey components using Material-UI, but these components were completely unused and incompatible with the main `web/` application's tech stack.
+
+**Root Cause Analysis**:
+1. **Unused Code**: No imports found anywhere in the codebase referencing `frontend/src/`
+2. **Tech Stack Mismatch**: `frontend/` used Material-UI while `web/` uses Tailwind CSS + Lucide icons
+3. **Duplication**: Survey functionality already existed in `web/src/pages/surveys/` and `web/src/components/surveys/`
+4. **No Build Process**: `frontend/` had no `package.json` or build configuration
+5. **Architectural Confusion**: Developers unclear which survey system to use
+
+**Evidence of Non-Usage**:
+```typescript
+// frontend/src - Material-UI (UNUSED)
+import { Box, Container, Grid, Paper } from '@mui/material';
+import { Add as AddIcon, Preview as PreviewIcon } from '@mui/icons-material';
+
+// web/src - Tailwind + Lucide (ACTIVE)
+import { Save, Eye, Settings, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+```
+
+**Analysis Findings**:
+- ✅ **No imports**: Comprehensive search found no references to `frontend/src/` in active codebase
+- ✅ **Complete isolation**: 406-line survey types system unused despite complexity
+- ✅ **Functional duplication**: 22 question types vs. simpler active implementation
+- ✅ **Different patterns**: Complex drag-and-drop vs. simpler form-based approach in `web/`
+
+**Resolution Actions**:
+1. **Removed Directory**: `rm -rf frontend/` to eliminate confusion
+2. **Updated Documentation**: Modified `docs/file-structure.md` to reflect unified architecture
+3. **Clarified Survey Location**: Documented that surveys are in `web/src/pages/surveys/`
+
+**Files Modified**:
+- **Removed**: `frontend/` directory (entire tree)
+- **Updated**: `docs/file-structure.md` - removed frontend section, clarified survey locations
+
+**Architecture Improvements**:
+- ✅ **Single Tech Stack**: All frontend code now uses consistent Tailwind + Lucide
+- ✅ **Unified Build Process**: Single `web/package.json` for all frontend dependencies
+- ✅ **Clear Survey Location**: All survey functionality in `web/src/`
+- ✅ **Reduced Complexity**: Eliminated parallel survey implementations
+- ✅ **Developer Clarity**: No confusion about which components to use
+
+**Prevention Guidelines**:
+1. **Regular Usage Audits**: Periodically check for unused code directories
+2. **Import Analysis**: Use tools to detect orphaned modules and components
+3. **Tech Stack Consistency**: Maintain single frontend technology stack
+4. **Clear Documentation**: Document which directories contain active vs. legacy code
+5. **Build Integration**: Ensure all code directories have clear build/usage paths
+6. **Architectural Reviews**: Regular reviews to prevent duplicate implementations

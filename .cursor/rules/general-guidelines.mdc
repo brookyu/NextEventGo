@@ -1,0 +1,10 @@
+---
+alwaysApply: true
+---
+1.docs folder contains all the docs so far
+2.put your important findings (problems that took long time to solve) into .augment/rules/findings.md for future error-proof. for new tasks, read throught this doc first to be an experienced project manager
+1. always make sure old data can be migrated losslessly
+4.check the code base file structrue, before creaing new files
+1. old frontend is developed with vue, and can be found at /Users/brook/NextEventAdminFrontEnd_for_reference
+2. old backend is deveopled with .net, and can be found at /Users/brook/CodeSync/NextEventDotNet3 _cursor
+3. remember, we're using the old db in local mysql server. check the config file for settings. don't use sqlite again

@@ -25,7 +25,7 @@ nextevent-go-v2/
 │   └── monitoring/            # Monitoring configurations
 ├── docs/                      # Documentation
 ├── examples/                  # Example code and integrations
-├── frontend/                  # Survey-specific frontend components
+
 ├── internal/                  # Private application code
 ├── logs/                      # Application logs (gitignored)
 ├── migrations/                # Database migrations
@@ -121,17 +121,11 @@ web/
 └── vite.config.ts             # Vite build configuration
 ```
 
-### Survey Frontend (frontend/)
-```
-frontend/
-└── src/                       # Survey-specific components
-    ├── components/            # Survey UI components
-    │   ├── analytics/         # Survey analytics
-    │   └── survey/            # Survey builder components
-    ├── hooks/                 # Survey-specific hooks
-    ├── services/              # Survey API services
-    └── types/                 # Survey type definitions
-```
+### Survey Management
+Survey functionality is integrated within the main web application at:
+- `web/src/pages/surveys/` - Survey management pages
+- `web/src/components/surveys/` - Survey UI components  
+- `web/src/api/surveys.ts` - Survey API integration
 
 ## Database Migrations
 
