@@ -54,7 +54,7 @@ const VideoSelector: React.FC<VideoSelectorProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Fetch videos
   const { data: videosResponse, isLoading } = useQuery({
@@ -62,13 +62,13 @@ const VideoSelector: React.FC<VideoSelectorProps> = ({
     queryFn: () => {
       console.log('Fetching videos with params:', {
         search: searchTerm,
-        categoryId: selectedCategory || undefined,
+        categoryId: selectedCategory && selectedCategory !== 'all' ? selectedCategory : undefined,
         pageSize: mode === 'insert' ? 50 : 20,
         includeCategory: true,
       });
       return videosApi.getVideos({
         search: searchTerm,
-        categoryId: selectedCategory || undefined,
+        categoryId: selectedCategory && selectedCategory !== 'all' ? selectedCategory : undefined,
         pageSize: mode === 'insert' ? 50 : 20,
         includeCategory: true,
       });
@@ -177,7 +177,7 @@ const VideoSelector: React.FC<VideoSelectorProps> = ({
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All categories</SelectItem>
+              <SelectItem value="all">All categories</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category.id} value={category.id}>
                   {category.name}

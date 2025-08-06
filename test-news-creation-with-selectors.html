@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Creation with Article & Image Selectors</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 30px;
+        }
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            border-bottom-color: #007bff;
+            color: #007bff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+        .form-row .form-group {
+            flex: 1;
+        }
+        .selector-section {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .selector-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .selector-header h3 {
+            margin: 0;
+            color: #333;
+        }
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .item-card {
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        .item-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.1);
+        }
+        .item-card.selected {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+        }
+        .item-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .item-meta {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .item-summary {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.4;
+        }
+        .image-preview {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .selected-count {
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .selected-items {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        .selected-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .selected-item:last-child {
+            border-bottom: none;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .pagination button {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Create News with Article & Image Selectors</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('basic')">Basic Info</div>
+            <div class="tab" onclick="switchTab('articles')">Articles <span id="articleCount" class="selected-count">0</span></div>
+            <div class="tab" onclick="switchTab('images')">Images <span id="imageCount" class="selected-count">0</span></div>
+            <div class="tab" onclick="switchTab('settings')">Settings</div>
+        </div>
+
+        <div id="message"></div>
+
+        <!-- Basic Info Tab -->
+        <div id="basic-tab" class="tab-content active">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="title">Title *</label>
+                    <input type="text" id="title" placeholder="Enter news title..." required>
+                </div>
+                <div class="form-group">
+                    <label for="subtitle">Subtitle</label>
+                    <input type="text" id="subtitle" placeholder="Enter news subtitle...">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="summary">Summary</label>
+                <textarea id="summary" placeholder="Brief summary of the news..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" placeholder="Detailed description..."></textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="type">Type *</label>
+                    <select id="type" required>
+                        <option value="regular">Regular News</option>
+                        <option value="breaking">Breaking News</option>
+                        <option value="feature">Featured News</option>
+                        <option value="special">Special News</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="priority">Priority *</label>
+                    <select id="priority" required>
+                        <option value="low">Low</option>
+                        <option value="normal" selected>Normal</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Articles Tab -->
+        <div id="articles-tab" class="tab-content">
+            <div class="selector-section">
+                <div class="selector-header">
+                    <h3>Select Articles</h3>
+                    <span>Choose articles to include in this news publication</span>
+                </div>
+                
+                <input type="text" id="articleSearch" class="search-box" placeholder="Search articles by title...">
+                
+                <div id="articleLoading" class="loading" style="display: none;">Loading articles...</div>
+                <div id="articleError" class="error" style="display: none;"></div>
+                
+                <div id="articleGrid" class="items-grid"></div>
+                
+                <div class="pagination">
+                    <button id="articlePrevBtn" onclick="loadArticles(currentArticlePage - 1)">Previous</button>
+                    <span id="articlePageInfo"></span>
+                    <button id="articleNextBtn" onclick="loadArticles(currentArticlePage + 1)">Next</button>
+                </div>
+                
+                <div class="selected-items">
+                    <h4>Selected Articles (<span id="selectedArticleCount">0</span>)</h4>
+                    <div id="selectedArticlesList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Images Tab -->
+        <div id="images-tab" class="tab-content">
+            <div class="selector-section">
+                <div class="selector-header">
+                    <h3>Select Featured Image</h3>
+                    <span>Choose a featured image for the news</span>
+                </div>
+                
+                <input type="text" id="imageSearch" class="search-box" placeholder="Search images by filename...">
+                
+                <div id="imageLoading" class="loading" style="display: none;">Loading images...</div>
+                <div id="imageError" class="error" style="display: none;"></div>
+                
+                <div id="imageGrid" class="items-grid"></div>
+                
+                <div class="pagination">
+                    <button id="imagePrevBtn" onclick="loadImages(currentImagePage - 1)">Previous</button>
+                    <span id="imagePageInfo"></span>
+                    <button id="imageNextBtn" onclick="loadImages(currentImagePage + 1)">Next</button>
+                </div>
+                
+                <div class="selected-items">
+                    <h4>Selected Images</h4>
+                    <div id="selectedImagesList"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="allowComments" checked> Allow Comments
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="allowSharing" checked> Allow Sharing
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isFeatured"> Featured News
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="isBreaking"> Breaking News
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="requireAuth"> Require Authentication
+                </label>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+            <button type="button" class="btn btn-primary" onclick="createNews()">Create News</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/v2';
+        
+        // State management
+        let currentArticlePage = 1;
+        let currentImagePage = 1;
+        let selectedArticles = new Set();
+        let selectedImages = new Set();
+        let articleData = {};
+        let imageData = {};
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // Load data if needed
+            if (tabName === 'articles' && Object.keys(articleData).length === 0) {
+                loadArticles();
+            } else if (tabName === 'images' && Object.keys(imageData).length === 0) {
+                loadImages();
+            }
+        }
+
+        // Load articles
+        async function loadArticles(page = 1) {
+            const searchQuery = document.getElementById('articleSearch').value;
+            const loading = document.getElementById('articleLoading');
+            const error = document.getElementById('articleError');
+            const grid = document.getElementById('articleGrid');
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            grid.innerHTML = '';
+            
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    pageSize: 12,
+                    query: searchQuery
+                });
+                
+                const response = await fetch(`${API_BASE}/news/articles/search?${params}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to load articles');
+                }
+                
+                currentArticlePage = page;
+                displayArticles(data.articles || []);
+                updateArticlePagination(data.pagination);
+                
+            } catch (err) {
+                error.textContent = err.message;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Display articles
+        function displayArticles(articles) {
+            const grid = document.getElementById('articleGrid');
+            
+            articles.forEach(article => {
+                articleData[article.id] = article;
+                
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.onclick = () => toggleArticleSelection(article.id);
+                
+                if (selectedArticles.has(article.id)) {
+                    card.classList.add('selected');
+                }
+                
+                card.innerHTML = `
+                    <div class="item-title">${article.title || 'Untitled'}</div>
+                    <div class="item-meta">
+                        Author: ${article.author || 'Unknown'} | 
+                        Views: ${article.view_count || article.viewCount || 0} |
+                        ${new Date(article.created_at || article.createdAt).toLocaleDateString()}
+                    </div>
+                    <div class="item-summary">${(article.summary || 'No summary').substring(0, 150)}...</div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        // Toggle article selection
+        function toggleArticleSelection(articleId) {
+            if (selectedArticles.has(articleId)) {
+                selectedArticles.delete(articleId);
+            } else {
+                selectedArticles.add(articleId);
+            }
+            updateSelectedArticles();
+            loadArticles(currentArticlePage); // Refresh to update selection state
+        }
+
+        // Update selected articles display
+        function updateSelectedArticles() {
+            const count = document.getElementById('selectedArticleCount');
+            const list = document.getElementById('selectedArticlesList');
+            const tabCount = document.getElementById('articleCount');
+            
+            count.textContent = selectedArticles.size;
+            tabCount.textContent = selectedArticles.size;
+            list.innerHTML = '';
+            
+            selectedArticles.forEach(articleId => {
+                const article = articleData[articleId];
+                if (article) {
+                    const item = document.createElement('div');
+                    item.className = 'selected-item';
+                    item.innerHTML = `
+                        <span>${article.title || 'Untitled'}</span>
+                        <button class="btn btn-danger" onclick="toggleArticleSelection('${articleId}')">Remove</button>
+                    `;
+                    list.appendChild(item);
+                }
+            });
+        }
+
+        // Load images (similar to articles)
+        async function loadImages(page = 1) {
+            const searchQuery = document.getElementById('imageSearch').value;
+            const loading = document.getElementById('imageLoading');
+            const error = document.getElementById('imageError');
+            const grid = document.getElementById('imageGrid');
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            grid.innerHTML = '';
+            
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    pageSize: 12,
+                    query: searchQuery
+                });
+                
+                const response = await fetch(`${API_BASE}/news/images/search?${params}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to load images');
+                }
+                
+                currentImagePage = page;
+                displayImages(data.images || []);
+                updateImagePagination(data.pagination);
+                
+            } catch (err) {
+                error.textContent = err.message;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Display images
+        function displayImages(images) {
+            const grid = document.getElementById('imageGrid');
+            
+            images.forEach(image => {
+                imageData[image.id] = image;
+                
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.onclick = () => toggleImageSelection(image.id);
+                
+                if (selectedImages.has(image.id)) {
+                    card.classList.add('selected');
+                }
+                
+                const imageUrl = image.original_url || image.originalUrl || 
+                               image.url || `/uploads/${image.storage_path}` || 
+                               `/placeholder.jpg`;
+                
+                card.innerHTML = `
+                    <img src="${imageUrl}" alt="${image.alt_text || image.filename}" class="image-preview" 
+                         onerror="this.src='/placeholder.jpg'">
+                    <div class="item-title">${image.filename}</div>
+                    <div class="item-meta">${image.width}x${image.height} | ${(image.file_size / 1024).toFixed(1)}KB</div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        // Toggle image selection (single selection for featured image)
+        function toggleImageSelection(imageId) {
+            if (selectedImages.has(imageId)) {
+                selectedImages.delete(imageId);
+            } else {
+                selectedImages.clear(); // Only one featured image
+                selectedImages.add(imageId);
+            }
+            updateSelectedImages();
+            loadImages(currentImagePage); // Refresh to update selection state
+        }
+
+        // Update selected images display
+        function updateSelectedImages() {
+            const list = document.getElementById('selectedImagesList');
+            const tabCount = document.getElementById('imageCount');
+            
+            tabCount.textContent = selectedImages.size;
+            list.innerHTML = '';
+            
+            selectedImages.forEach(imageId => {
+                const image = imageData[imageId];
+                if (image) {
+                    const item = document.createElement('div');
+                    item.className = 'selected-item';
+                    item.innerHTML = `
+                        <span>Featured: ${image.filename}</span>
+                        <button class="btn btn-danger" onclick="toggleImageSelection('${imageId}')">Remove</button>
+                    `;
+                    list.appendChild(item);
+                }
+            });
+        }
+
+        // Pagination updates
+        function updateArticlePagination(pagination) {
+            const prevBtn = document.getElementById('articlePrevBtn');
+            const nextBtn = document.getElementById('articleNextBtn');
+            const pageInfo = document.getElementById('articlePageInfo');
+            
+            prevBtn.disabled = !pagination.hasPrev;
+            nextBtn.disabled = !pagination.hasNext;
+            pageInfo.textContent = `Page ${pagination.page} of ${pagination.totalPages} (${pagination.total} total)`;
+        }
+
+        function updateImagePagination(pagination) {
+            const prevBtn = document.getElementById('imagePrevBtn');
+            const nextBtn = document.getElementById('imageNextBtn');
+            const pageInfo = document.getElementById('imagePageInfo');
+            
+            prevBtn.disabled = !pagination.hasPrev;
+            nextBtn.disabled = !pagination.hasNext;
+            pageInfo.textContent = `Page ${pagination.page} of ${pagination.totalPages} (${pagination.total} total)`;
+        }
+
+        // Search handlers
+        document.getElementById('articleSearch').addEventListener('input', () => {
+            clearTimeout(window.articleSearchTimeout);
+            window.articleSearchTimeout = setTimeout(() => loadArticles(1), 500);
+        });
+
+        document.getElementById('imageSearch').addEventListener('input', () => {
+            clearTimeout(window.imageSearchTimeout);
+            window.imageSearchTimeout = setTimeout(() => loadImages(1), 500);
+        });
+
+        // Create news
+        async function createNews() {
+            const messageDiv = document.getElementById('message');
+            
+            // Validate form
+            const title = document.getElementById('title').value.trim();
+            if (!title) {
+                showMessage('Please enter a title', 'error');
+                return;
+            }
+            
+            if (selectedArticles.size === 0) {
+                showMessage('Please select at least one article', 'error');
+                switchTab('articles');
+                return;
+            }
+            
+            // Prepare request data
+            const requestData = {
+                title: title,
+                subtitle: document.getElementById('subtitle').value.trim(),
+                summary: document.getElementById('summary').value.trim(),
+                description: document.getElementById('description').value.trim(),
+                type: document.getElementById('type').value,
+                priority: document.getElementById('priority').value,
+                selectedArticleIds: Array.from(selectedArticles),
+                allowComments: document.getElementById('allowComments').checked,
+                allowSharing: document.getElementById('allowSharing').checked,
+                isFeatured: document.getElementById('isFeatured').checked,
+                isBreaking: document.getElementById('isBreaking').checked,
+                requireAuth: document.getElementById('requireAuth').checked
+            };
+            
+            // Add featured image if selected
+            if (selectedImages.size > 0) {
+                requestData.featuredImageId = Array.from(selectedImages)[0];
+            }
+            
+            try {
+                showMessage('Creating news...', 'loading');
+                
+                const response = await fetch(`${API_BASE}/news/create-with-selectors`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Failed to create news');
+                }
+                
+                showMessage(`News created successfully! ID: ${data.id}`, 'success');
+                
+                // Optionally reset form or redirect
+                setTimeout(() => {
+                    if (confirm('News created successfully! Do you want to create another news?')) {
+                        resetForm();
+                    }
+                }, 2000);
+                
+            } catch (err) {
+                showMessage(`Error: ${err.message}`, 'error');
+            }
+        }
+
+        // Show message
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = type;
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Reset form
+        function resetForm() {
+            document.getElementById('title').value = '';
+            document.getElementById('subtitle').value = '';
+            document.getElementById('summary').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('type').value = 'regular';
+            document.getElementById('priority').value = 'normal';
+            document.getElementById('allowComments').checked = true;
+            document.getElementById('allowSharing').checked = true;
+            document.getElementById('isFeatured').checked = false;
+            document.getElementById('isBreaking').checked = false;
+            document.getElementById('requireAuth').checked = false;
+            
+            selectedArticles.clear();
+            selectedImages.clear();
+            updateSelectedArticles();
+            updateSelectedImages();
+            
+            document.getElementById('message').style.display = 'none';
+            switchTab('basic');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load initial data when tabs are first accessed
+            updateSelectedArticles();
+            updateSelectedImages();
+        });
+    </script>
+</body>
+</html>

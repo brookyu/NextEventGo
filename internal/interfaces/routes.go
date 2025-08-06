@@ -21,9 +21,14 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	eventRepo := repositories.NewGormSiteEventRepository(infra.DB)
 	userRepo := repositories.NewGormUserRepository(infra.DB)
 	attendeeRepo := repositories.NewGormEventAttendeeRepository(infra.DB)
+	articleRepo := repositories.NewGormSiteArticleRepository(infra.DB)
+	surveyRepo := repositories.NewGormSurveyRepository(infra.DB)
+	videoRepo := repositories.NewGormVideoRepository(infra.DB)
+	categoryRepo := repositories.NewGormArticleCategoryRepository(infra.DB)
 
 	// Initialize services
 	eventService := infraServices.NewEventService(eventRepo, userRepo, attendeeRepo, infra.Logger, infra.DB)
+	siteEventService := services.NewSiteEventService(eventRepo, articleRepo, surveyRepo, videoRepo, categoryRepo, infra.Logger)
 	// attendeeService := services.NewAttendeeService(attendeeRepo, eventRepo, userRepo, infra.Logger, infra.DB)
 	// qrCodeService := services.NewQRCodeService(eventRepo, attendeeRepo, infra.RedisClient, infra.Logger)
 
@@ -37,6 +42,7 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	authController := controllers.NewAuthController(infra.Config, infra.Logger)
 	// wechatController := controllers.NewWeChatController(wechatService, infra.Logger)
 	eventController := controllers.NewEventController(eventService, nil, nil, infra.Logger)
+	siteEventController := controllers.NewSiteEventController(siteEventService, infra.Logger)
 	simpleAttendeeController := controllers.NewSimpleAttendeeController(infra.DB, infra.Logger)
 	// imageController := controllers.NewImageController(imageService, imageCategoryService, infra.Logger)
 	// imageCategoryController := controllers.NewImageCategoryController(imageCategoryService, infra.Logger)
@@ -100,12 +106,38 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 		api.POST("/video-sessions", apiHandlers.CreateVideoSession)
 		api.PUT("/video-sessions/:id", apiHandlers.UpdateVideoSession)
 
-		// News endpoint
+		// News endpoints - Enhanced CRUD operations
 		api.GET("/news", apiHandlers.GetNews)
+		api.POST("/news", apiHandlers.CreateNews)
+		api.GET("/news/:id", apiHandlers.GetNewsById)
+		api.GET("/news/:id/for-editing", apiHandlers.GetNewsForEditing)
+		api.PUT("/news/:id", apiHandlers.UpdateNews)
+		api.DELETE("/news/:id", apiHandlers.DeleteNews)
+		api.POST("/news/:id/publish", apiHandlers.PublishNews)
+		api.POST("/news/:id/unpublish", apiHandlers.UnpublishNews)
+		api.POST("/news/bulk/publish", apiHandlers.BulkPublishNews)
+		api.POST("/news/bulk/delete", apiHandlers.BulkDeleteNews)
 
-		// Events endpoints
+		// News creation - Article and Image selection endpoints
+		api.GET("/news/articles/search", apiHandlers.SearchArticlesForSelection)
+		api.GET("/news/images/search", apiHandlers.SearchImagesForSelection)
+
+		// Enhanced news creation with selectors
+		api.POST("/news/create-with-selectors", apiHandlers.CreateNewsWithSelectors)
+
+		// Events endpoints (legacy)
 		api.GET("/events", apiHandlers.GetEvents)
 		api.GET("/events/current", apiHandlers.GetCurrentEvent)
+
+		// Site Events endpoints (new comprehensive API)
+		api.GET("/site-events", siteEventController.GetSiteEvents)
+		api.GET("/site-events/current", siteEventController.GetCurrentEvent)
+		api.GET("/site-events/:id", siteEventController.GetSiteEvent)
+		api.GET("/site-events/:id/for-editing", siteEventController.GetSiteEventForEditing)
+		api.POST("/site-events", siteEventController.CreateSiteEvent)
+		api.PUT("/site-events/:id", siteEventController.UpdateSiteEvent)
+		api.DELETE("/site-events/:id", siteEventController.DeleteSiteEvent)
+		api.POST("/site-events/:id/toggle-current", siteEventController.ToggleCurrentEvent)
 
 		// Authentication endpoint
 		api.POST("/auth/login", apiHandlers.Login)

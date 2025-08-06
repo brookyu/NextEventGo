@@ -43,7 +43,7 @@ const ImageSelector: React.FC<ImageSelectorProps> = ({
       name: searchTerm || undefined,
       limit: 20,
     }),
-    enabled: contentOnly || isOpen, // Enable query for contentOnly mode or when dialog is open
+    enabled: contentOnly || isOpen || !!selectedImageId, // Enable query for contentOnly mode, when dialog is open, or when there's a selected image
   });
 
   // Get selected image details

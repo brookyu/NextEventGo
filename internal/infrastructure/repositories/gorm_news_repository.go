@@ -182,11 +182,11 @@ func (r *GormNewsRepository) GetByStatus(ctx context.Context, status entities.Ne
 	return news, err
 }
 
-// GetScheduledNews retrieves scheduled news that should be published
-func (r *GormNewsRepository) GetScheduledNews(ctx context.Context, before time.Time) ([]*entities.News, error) {
+// GetScheduledNews retrieves news scheduled for publishing within a time range
+func (r *GormNewsRepository) GetScheduledNews(ctx context.Context, from, to time.Time) ([]*entities.News, error) {
 	var news []*entities.News
 	err := r.db.WithContext(ctx).
-		Where("status = ? AND scheduled_at <= ?", entities.NewsStatusScheduled, before).
+		Where("status = ? AND scheduled_at BETWEEN ? AND ?", entities.NewsStatusScheduled, from, to).
 		Find(&news).Error
 	return news, err
 }
@@ -637,4 +637,38 @@ func (r *GormNewsRepository) applyNewsFilters(query *gorm.DB, filter repositorie
 	}
 
 	return query
+}
+
+// GetExpiringNews retrieves news that will expire within a time range
+func (r *GormNewsRepository) GetExpiringNews(ctx context.Context, from, to time.Time) ([]*entities.News, error) {
+	var news []*entities.News
+	err := r.db.WithContext(ctx).
+		Where("status = ? AND expires_at BETWEEN ? AND ?", entities.NewsStatusPublished, from, to).
+		Find(&news).Error
+
+	if err != nil {
+		return nil, err
+	}
+	return news, nil
+}
+
+// ArchiveNews archives a news item by changing its status
+func (r *GormNewsRepository) ArchiveNews(ctx context.Context, id uuid.UUID) error {
+	return r.db.WithContext(ctx).
+		Model(&entities.News{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"status":     entities.NewsStatusArchived,
+			"updated_at": time.Now(),
+		}).Error
+}
+
+// HealthCheck performs a health check on the database connection
+func (r *GormNewsRepository) HealthCheck(ctx context.Context) error {
+	sqlDB, err := r.db.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get underlying sql.DB: %w", err)
+	}
+
+	return sqlDB.PingContext(ctx)
 }

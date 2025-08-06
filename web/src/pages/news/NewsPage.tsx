@@ -1,79 +1,134 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Newspaper, Calendar, User, Search, Filter, Plus, Eye } from 'lucide-react'
+import {
+  Newspaper,
+  Plus,
+  Grid3X3,
+  List,
+  Table,
+  Filter,
+  BarChart3,
+  Settings,
+  Download,
+  Upload,
+  Trash2,
+  Archive,
+  Globe,
+  Clock
+} from 'lucide-react'
 
-interface NewsItem {
-  id: string
-  title: string
-  content?: string
-  summary?: string
-  author?: string
-  published_at?: string
-  created_at?: string
-  updated_at?: string
-  status?: string
-  views?: number
-  category?: string
-}
+// Import our new components and hooks
+import { useNewsList, useDeleteNews, useBulkDeleteNews, useBulkPublishNews } from '../../hooks/useNews'
+import { useNewsStore } from '../../store/newsStore'
+import NewsListView from '../../components/news/NewsListView'
+import NewsFilters from '../../components/news/NewsFilters'
+import { Button } from '../../components/ui/button'
+import { Badge } from '../../components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs'
 
 export default function NewsPage() {
-  const [news, setNews] = useState<NewsItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const navigate = useNavigate()
 
-  useEffect(() => {
-    fetchNews()
-  }, [])
+  // Store state
+  const {
+    newsList,
+    totalCount,
+    currentPage,
+    totalPages,
+    loading,
+    error,
+    filters,
+    selectedNewsIds,
+    viewMode,
+    showFilters,
+    setFilters,
+    clearFilters,
+    setSelectedNewsIds,
+    toggleNewsSelection,
+    selectAllNews,
+    clearSelection,
+    setViewMode,
+    setShowFilters,
+    getSelectedNews,
+    hasSelection,
+  } = useNewsStore()
 
-  const fetchNews = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('http://localhost:8080/api/v2/news')
-      if (!response.ok) {
-        throw new Error('Failed to fetch news')
-      }
-      const data = await response.json()
-      setNews(data.data || [])
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load news')
-    } finally {
-      setLoading(false)
+  // Hooks
+  const { data: newsData, isLoading, error: queryError } = useNewsList()
+  const deleteNewsMutation = useDeleteNews()
+  const bulkDeleteMutation = useBulkDeleteNews()
+  const bulkPublishMutation = useBulkPublishNews()
+
+  // Local state for bulk operations
+  const [showBulkActions, setShowBulkActions] = useState(false)
+
+  // Event handlers
+  const handleCreateNews = () => {
+    navigate('/news/create')
+  }
+
+  const handleEditNews = (id: string) => {
+    if (id === 'new') {
+      handleCreateNews()
+    } else {
+      navigate(`/news/${id}/edit`)
     }
   }
 
-  const filteredNews = news.filter(item =>
-    item.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.summary?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading news...</p>
-        </div>
-      </div>
-    )
+  const handleDeleteNews = async (id: string) => {
+    if (confirm('Are you sure you want to delete this news item?')) {
+      await deleteNewsMutation.mutateAsync(id)
+      clearSelection()
+    }
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Newspaper className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={fetchNews}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    )
+  const handleViewAnalytics = (id: string) => {
+    navigate(`/news/${id}/analytics`)
+  }
+
+  const handleDuplicate = (id: string) => {
+    // TODO: Implement duplicate functionality
+    console.log('Duplicate news:', id)
+  }
+
+  const handlePublish = (id: string) => {
+    // TODO: Implement publish functionality
+    console.log('Publish news:', id)
+  }
+
+  const handleUnpublish = (id: string) => {
+    // TODO: Implement unpublish functionality
+    console.log('Unpublish news:', id)
+  }
+
+  const handleArchive = (id: string) => {
+    // TODO: Implement archive functionality
+    console.log('Archive news:', id)
+  }
+
+  // Bulk operations
+  const handleBulkDelete = async () => {
+    if (confirm(`Are you sure you want to delete ${selectedNewsIds.length} news items?`)) {
+      await bulkDeleteMutation.mutateAsync(selectedNewsIds)
+      clearSelection()
+      setShowBulkActions(false)
+    }
+  }
+
+  const handleBulkPublish = async () => {
+    await bulkPublishMutation.mutateAsync(selectedNewsIds)
+    clearSelection()
+    setShowBulkActions(false)
+  }
+
+  // Stats calculation
+  const stats = {
+    total: totalCount,
+    published: newsList.filter(item => item.status === 'published').length,
+    draft: newsList.filter(item => item.status === 'draft').length,
+    archived: newsList.filter(item => item.status === 'archived').length,
   }
 
   return (
@@ -81,169 +136,244 @@ export default function NewsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">News</h1>
+          <h1 className="text-3xl font-bold text-gray-900">News Management</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Manage your news articles and announcements
+            Create, manage, and publish news articles and announcements
           </p>
         </div>
-        <div className="mt-4 sm:mt-0">
-          <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+        <div className="mt-4 sm:mt-0 flex items-center space-x-3">
+          {/* View Mode Toggle */}
+          <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('grid')}
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'table' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+            >
+              <Table className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Filter Toggle */}
+          <Button
+            variant={showFilters ? 'default' : 'outline'}
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="w-4 h-4 mr-2" />
+            Filters
+          </Button>
+
+          {/* Create Button */}
+          <Button onClick={handleCreateNews}>
             <Plus className="w-4 h-4 mr-2" />
-            Add News
-          </button>
+            Create News
+          </Button>
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search news..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+      {/* Filters */}
+      {showFilters && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Filter className="w-5 h-5" />
+              <span>Filters</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <NewsFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              onClearFilters={clearFilters}
+              // TODO: Add categories, authors, tags from API
+              categories={[]}
+              authors={[]}
+              tags={[]}
             />
-          </div>
-        </div>
-        <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </button>
-      </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Bulk Actions */}
+      {hasSelection() && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <span className="text-sm font-medium text-blue-900">
+                  {selectedNewsIds.length} item(s) selected
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearSelection}
+                >
+                  Clear Selection
+                </Button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleBulkPublish}
+                  disabled={bulkPublishMutation.isPending}
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  Publish
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {/* TODO: Bulk archive */}}
+                >
+                  <Archive className="w-4 h-4 mr-2" />
+                  Archive
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleteMutation.isPending}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Newspaper className="h-6 w-6 text-gray-400" />
+                <Newspaper className="h-8 w-8 text-blue-600" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Total News</dt>
-                  <dd className="text-lg font-medium text-gray-900">{news.length}</dd>
+                  <dd className="text-2xl font-bold text-gray-900">{stats.total}</dd>
                 </dl>
               </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Eye className="h-6 w-6 text-gray-400" />
+                <Globe className="h-8 w-8 text-green-600" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Published</dt>
-                  <dd className="text-lg font-medium text-gray-900">{news.length}</dd>
+                  <dd className="text-2xl font-bold text-gray-900">{stats.published}</dd>
                 </dl>
               </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <Calendar className="h-6 w-6 text-gray-400" />
+                <Clock className="h-8 w-8 text-yellow-600" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">This Month</dt>
-                  <dd className="text-lg font-medium text-gray-900">0</dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Draft</dt>
+                  <dd className="text-2xl font-bold text-gray-900">{stats.draft}</dd>
                 </dl>
               </div>
             </div>
-          </div>
-        </div>
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <User className="h-6 w-6 text-gray-400" />
+                <Archive className="h-8 w-8 text-gray-600" />
               </div>
-              <div className="ml-5 w-0 flex-1">
+              <div className="ml-4 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Authors</dt>
-                  <dd className="text-lg font-medium text-gray-900">1</dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Archived</dt>
+                  <dd className="text-2xl font-bold text-gray-900">{stats.archived}</dd>
                 </dl>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* News List */}
-      {filteredNews.length === 0 ? (
-        <div className="text-center py-12">
-          <Newspaper className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No news found</h3>
-          <p className="text-gray-500 mb-6">
-            {searchTerm ? 'Try adjusting your search terms' : 'Get started by adding your first news article'}
-          </p>
-          <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Add News
-          </button>
-        </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {filteredNews.map((item, index) => (
-              <motion.li
-                key={item.id || index}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-medium text-gray-900 truncate">
-                        {item.title || 'Untitled News'}
-                      </h3>
-                      {item.summary && (
-                        <p className="mt-1 text-sm text-gray-600 line-clamp-2">
-                          {item.summary}
-                        </p>
-                      )}
-                      <div className="mt-2 flex items-center text-sm text-gray-500">
-                        <User className="flex-shrink-0 mr-1.5 h-4 w-4" />
-                        <span className="mr-4">{item.author || 'Unknown Author'}</span>
-                        <Calendar className="flex-shrink-0 mr-1.5 h-4 w-4" />
-                        <span>
-                          {item.published_at || item.created_at 
-                            ? new Date(item.published_at || item.created_at!).toLocaleDateString()
-                            : 'No date'
-                          }
-                        </span>
-                        {item.views && (
-                          <>
-                            <Eye className="flex-shrink-0 ml-4 mr-1.5 h-4 w-4" />
-                            <span>{item.views} views</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="ml-4 flex-shrink-0">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.status === 'published' 
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {item.status || 'Draft'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </motion.li>
-            ))}
-          </ul>
+      {/* News Content */}
+      <Card>
+        <CardContent className="p-0">
+          <NewsListView
+            news={newsList}
+            loading={isLoading || loading}
+            selectedIds={selectedNewsIds}
+            onSelect={toggleNewsSelection}
+            onSelectAll={selectAllNews}
+            onEdit={handleEditNews}
+            onDelete={handleDeleteNews}
+            onDuplicate={handleDuplicate}
+            onPublish={handlePublish}
+            onUnpublish={handleUnpublish}
+            onArchive={handleArchive}
+            onViewAnalytics={handleViewAnalytics}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-700">
+              Showing {((currentPage - 1) * filters.pageSize!) + 1} to{' '}
+              {Math.min(currentPage * filters.pageSize!, totalCount)} of {totalCount} results
+            </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilters({ page: currentPage - 1 })}
+              disabled={currentPage <= 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm text-gray-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilters({ page: currentPage + 1 })}
+              disabled={currentPage >= totalPages}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       )}
     </div>

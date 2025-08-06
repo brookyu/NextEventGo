@@ -45,7 +45,7 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
   const handleFilterChange = (key: keyof AnalyticsFilter, value: string | undefined) => {
     setLocalFilters(prev => ({
       ...prev,
-      [key]: value || undefined,
+      [key]: value === 'all' ? undefined : value,
     }));
   };
 
@@ -161,14 +161,14 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
           <div>
             <Label htmlFor="categoryId" className="text-xs text-gray-600">Category</Label>
             <Select
-              value={localFilters.categoryId || ''}
+              value={localFilters.categoryId || 'all'}
               onValueChange={(value) => handleFilterChange('categoryId', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All categories</SelectItem>
+                <SelectItem value="all">All categories</SelectItem>
                 {categories.map((category) => (
                   <SelectItem key={category.id} value={category.id}>
                     {category.name}
@@ -210,14 +210,14 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
           <div>
             <Label htmlFor="country" className="text-xs text-gray-600">Country</Label>
             <Select
-              value={localFilters.country || ''}
+              value={localFilters.country || 'all'}
               onValueChange={(value) => handleFilterChange('country', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All countries" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All countries</SelectItem>
+                <SelectItem value="all">All countries</SelectItem>
                 {countries.map((country) => (
                   <SelectItem key={country} value={country}>
                     {country}
@@ -230,14 +230,14 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
           <div>
             <Label htmlFor="deviceType" className="text-xs text-gray-600">Device Type</Label>
             <Select
-              value={localFilters.deviceType || ''}
+              value={localFilters.deviceType || 'all'}
               onValueChange={(value) => handleFilterChange('deviceType', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All devices" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All devices</SelectItem>
+                <SelectItem value="all">All devices</SelectItem>
                 {deviceTypes.map((device) => (
                   <SelectItem key={device} value={device}>
                     {device.charAt(0).toUpperCase() + device.slice(1)}
@@ -250,14 +250,14 @@ const AnalyticsFilters: React.FC<AnalyticsFiltersProps> = ({
           <div>
             <Label htmlFor="referrer" className="text-xs text-gray-600">Traffic Source</Label>
             <Select
-              value={localFilters.referrer || ''}
+              value={localFilters.referrer || 'all'}
               onValueChange={(value) => handleFilterChange('referrer', value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="All sources" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All sources</SelectItem>
+                <SelectItem value="all">All sources</SelectItem>
                 {referrers.map((referrer) => (
                   <SelectItem key={referrer} value={referrer}>
                     {referrer === 'direct' ? 'Direct' : referrer}

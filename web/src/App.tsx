@@ -1,32 +1,34 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuthStore } from '@/store/authStore'
+import { useAuthStore } from './store/authStore'
 
 // Layout components
-import AuthLayout from '@/components/layout/AuthLayout'
-import DashboardLayout from '@/components/layout/DashboardLayout'
+import AuthLayout from './components/layout/AuthLayout'
+import DashboardLayout from './components/layout/DashboardLayout'
 
 // Page components
-import LoginPage from '@/pages/auth/LoginPage'
-import DashboardPage from '@/pages/dashboard/DashboardPage'
-import EventsPage from '@/pages/events/EventsPage'
-import EventDetailPage from '@/pages/events/EventDetailPage'
-import EventFormPage from '@/pages/events/EventFormPage'
-import ArticlesPage from '@/pages/articles/ArticlesPage'
-import MobileArticleViewer from '@/components/articles/MobileArticleViewer'
-import CreateUpdateArticle from '@/components/articles/CreateUpdateArticle'
-import ImagesPage from '@/pages/images/ImagesPage'
-import VideosPage from '@/pages/videos/VideosPage'
-import CloudVideosPage from '@/pages/cloud-videos/CloudVideosPage'
-import NewsPage from '@/pages/news/NewsPage'
-import SurveysPage from '@/pages/surveys/SurveysPage'
-import SurveyTestPage from '@/pages/surveys/SurveyTestPage'
-import SurveyBuilderPage from '@/pages/surveys/SurveyBuilderPage'
-import AttendeesPage from '@/pages/attendees/AttendeesPage'
-import UsersPage from '@/pages/users/UsersPage'
-import WeChatPage from '@/pages/wechat/WeChatPage'
-import MigrationDashboard from '@/pages/migration/MigrationDashboard'
-import SettingsPage from '@/pages/settings/SettingsPage'
-import Test135Editor from '@/components/articles/Test135Editor'
+import LoginPage from './pages/auth/LoginPage'
+import DashboardPage from './pages/dashboard/DashboardPage'
+
+import SiteEventsPage from './pages/events/SiteEventsPage'
+import SiteEventDetailPage from './pages/events/SiteEventDetailPage'
+import SiteEventFormPage from './pages/events/SiteEventFormPage'
+import ArticlesPage from './pages/articles/ArticlesPage'
+import MobileArticleViewer from './components/articles/MobileArticleViewer'
+import CreateUpdateArticle from './components/articles/CreateUpdateArticle'
+import ImagesPage from './pages/images/ImagesPage'
+import VideosPage from './pages/videos/VideosPage'
+import CloudVideosPage from './pages/cloud-videos/CloudVideosPage'
+import NewsPage from './pages/news/NewsPage'
+import CreateEditNewsPage from './pages/news/CreateEditNewsPage'
+import SurveysPage from './pages/surveys/SurveysPage'
+import SurveyTestPage from './pages/surveys/SurveyTestPage'
+import SurveyBuilderPage from './pages/surveys/SurveyBuilderPage'
+import AttendeesPage from './pages/attendees/AttendeesPage'
+import UsersPage from './pages/users/UsersPage'
+import WeChatPage from './pages/wechat/WeChatPage'
+import MigrationDashboard from './pages/migration/MigrationDashboard'
+import SettingsPage from './pages/settings/SettingsPage'
+import Test135Editor from './components/articles/Test135Editor'
 
 function App() {
   const { isAuthenticated, isLoading } = useAuthStore()
@@ -56,11 +58,11 @@ function App() {
           <Route path="/login" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardLayout><DashboardPage /></DashboardLayout>} />
 
-          {/* Events */}
-          <Route path="/events" element={<DashboardLayout><EventsPage /></DashboardLayout>} />
-          <Route path="/events/new" element={<DashboardLayout><EventFormPage /></DashboardLayout>} />
-          <Route path="/events/:id" element={<DashboardLayout><EventDetailPage /></DashboardLayout>} />
-          <Route path="/events/:id/edit" element={<DashboardLayout><EventFormPage /></DashboardLayout>} />
+          {/* Events (formerly Site Events) */}
+          <Route path="/events" element={<DashboardLayout><SiteEventsPage /></DashboardLayout>} />
+          <Route path="/events/new" element={<DashboardLayout><SiteEventFormPage /></DashboardLayout>} />
+          <Route path="/events/:id" element={<DashboardLayout><SiteEventDetailPage /></DashboardLayout>} />
+          <Route path="/events/:id/edit" element={<DashboardLayout><SiteEventFormPage /></DashboardLayout>} />
 
           {/* Content Management */}
           <Route path="/articles" element={<DashboardLayout><ArticlesPage /></DashboardLayout>} />
@@ -71,6 +73,8 @@ function App() {
           <Route path="/videos" element={<DashboardLayout><VideosPage /></DashboardLayout>} />
           <Route path="/cloud-videos" element={<DashboardLayout><CloudVideosPage /></DashboardLayout>} />
           <Route path="/news" element={<DashboardLayout><NewsPage /></DashboardLayout>} />
+          <Route path="/news/create" element={<DashboardLayout><CreateEditNewsPage /></DashboardLayout>} />
+          <Route path="/news/:id/edit" element={<DashboardLayout><CreateEditNewsPage /></DashboardLayout>} />
           <Route path="/surveys" element={<DashboardLayout><SurveysPage /></DashboardLayout>} />
           <Route path="/surveys/test" element={<DashboardLayout><SurveyTestPage /></DashboardLayout>} />
           <Route path="/surveys/:surveyId/builder" element={<DashboardLayout><SurveyBuilderPage /></DashboardLayout>} />

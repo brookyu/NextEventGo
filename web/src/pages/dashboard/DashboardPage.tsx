@@ -3,26 +3,26 @@ import { Link } from 'react-router-dom'
 import { Calendar, Users, Plus, TrendingUp } from 'lucide-react'
 import { format } from 'date-fns'
 
-import { eventsApi, type Event } from '@/api/events'
+import { siteEventsApi, type SiteEvent } from '@/api/siteEvents'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default function DashboardPage() {
   // Fetch recent events
   const { data: eventsData, isLoading } = useQuery({
-    queryKey: ['events', 'recent'],
-    queryFn: () => eventsApi.getEvents({ limit: 5, sortBy: 'eventStartDate', sortOrder: 'desc' }),
+    queryKey: ['site-events', 'recent'],
+    queryFn: () => siteEventsApi.getEvents({ pageSize: 5, sortBy: 'startDate', sortOrder: 'desc' }),
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
   // Fetch current event
   const { data: currentEventData } = useQuery({
-    queryKey: ['events', 'current'],
-    queryFn: () => eventsApi.getCurrentEvent(),
+    queryKey: ['site-events', 'current'],
+    queryFn: () => siteEventsApi.getCurrentEvent(),
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
 
-  const events = eventsData?.data?.events || []
+  const events = eventsData?.data?.data || []
   const totalEvents = eventsData?.data?.total || 0
   const currentEvent = currentEventData?.data
 
@@ -108,7 +108,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold">{currentEvent.eventTitle}</h3>
-                <p className="text-gray-600">{currentEvent.tagName}</p>
+                <p className="text-gray-600">{currentEvent.tags}</p>
                 <p className="text-sm text-gray-500">
                   {format(new Date(currentEvent.eventStartDate), 'MMM dd, yyyy h:mm a')} - 
                   {format(new Date(currentEvent.eventEndDate), 'h:mm a')}
@@ -156,11 +156,11 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {events.map((event: Event) => (
+              {events.map((event: SiteEvent) => (
                 <div key={event.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
                     <h4 className="font-medium">{event.eventTitle}</h4>
-                    <p className="text-sm text-gray-600">{event.tagName}</p>
+                    <p className="text-sm text-gray-600">{event.tags}</p>
                     <p className="text-xs text-gray-500">
                       {format(new Date(event.eventStartDate), 'MMM dd, yyyy h:mm a')}
                     </p>

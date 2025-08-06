@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import {
   LayoutDashboard,
   Calendar,
+  CalendarDays,
   Users,
   UserCog,
   MessageSquare,
@@ -24,7 +25,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Events', href: '/events', icon: Calendar },
+  { name: 'Events', href: '/events', icon: CalendarDays },
   { name: 'Attendees', href: '/attendees', icon: Users },
   { name: 'Articles', href: '/articles', icon: FileText },
   { name: 'Images', href: '/images', icon: Image },

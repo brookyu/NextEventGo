@@ -16,8 +16,12 @@ type NewsCreateRequest struct {
 	Subtitle    string                `json:"subtitle" binding:"max=1000"`
 	Description string                `json:"description" binding:"max=2000"`
 	Summary     string                `json:"summary" binding:"max=1000"`
+	Content     string                `json:"content" binding:"max=50000"`
 	Type        entities.NewsType     `json:"type" binding:"required"`
 	Priority    entities.NewsPriority `json:"priority" binding:"required"`
+
+	// Author information
+	AuthorID *uuid.UUID `json:"authorId" binding:"required"`
 
 	// SEO and metadata
 	Slug            string `json:"slug" binding:"max=500"`
@@ -55,10 +59,14 @@ type NewsCreateRequest struct {
 
 // NewsUpdateRequest represents a request to update news
 type NewsUpdateRequest struct {
+	NewsID   uuid.UUID  `json:"newsId" binding:"required"`
+	EditorID *uuid.UUID `json:"editorId" binding:"required"`
+
 	Title       *string                `json:"title" binding:"omitempty,max=500"`
 	Subtitle    *string                `json:"subtitle" binding:"omitempty,max=1000"`
 	Description *string                `json:"description" binding:"omitempty,max=2000"`
 	Summary     *string                `json:"summary" binding:"omitempty,max=1000"`
+	Content     *string                `json:"content" binding:"omitempty,max=50000"`
 	Type        *entities.NewsType     `json:"type"`
 	Priority    *entities.NewsPriority `json:"priority"`
 
@@ -254,6 +262,112 @@ type NewsListResponse struct {
 	Pages int            `json:"pages"`
 }
 
+// NewsForEditingResponse represents news data for editing
+type NewsForEditingResponse struct {
+	ID              uuid.UUID                  `json:"id"`
+	Title           string                     `json:"title"`
+	Subtitle        string                     `json:"subtitle"`
+	Description     string                     `json:"description"`
+	Summary         string                     `json:"summary"`
+	Content         string                     `json:"content"`
+	Status          entities.NewsStatus        `json:"status"`
+	Type            entities.NewsType          `json:"type"`
+	Priority        entities.NewsPriority      `json:"priority"`
+	Slug            string                     `json:"slug"`
+	MetaTitle       string                     `json:"metaTitle"`
+	MetaDescription string                     `json:"metaDescription"`
+	Keywords        string                     `json:"keywords"`
+	Tags            string                     `json:"tags"`
+	FeaturedImageID *uuid.UUID                 `json:"featuredImageId"`
+	ThumbnailID     *uuid.UUID                 `json:"thumbnailId"`
+	ScheduledAt     *time.Time                 `json:"scheduledAt"`
+	ExpiresAt       *time.Time                 `json:"expiresAt"`
+	CreatedAt       time.Time                  `json:"createdAt"`
+	UpdatedAt       time.Time                  `json:"updatedAt"`
+	Articles        []NewsArticleForDisplaying `json:"articles"`
+}
+
+// NewsArticleForDisplaying represents an article in news for display
+type NewsArticleForDisplaying struct {
+	ID                 uuid.UUID `json:"id"`
+	ArticleID          uuid.UUID `json:"articleId"`
+	Title              string    `json:"title"`
+	Summary            string    `json:"summary"`
+	DisplayOrder       int       `json:"displayOrder"`
+	IsMainStory        bool      `json:"isMainStory"`
+	IsFeatured         bool      `json:"isFeatured"`
+	Section            string    `json:"section"`
+	FrontCoverImageUrl string    `json:"frontCoverImageUrl"`
+}
+
+// NewsListItem represents a news item in list view
+type NewsListItem struct {
+	ID              uuid.UUID             `json:"id"`
+	Title           string                `json:"title"`
+	Subtitle        string                `json:"subtitle"`
+	Description     string                `json:"description"`
+	Summary         string                `json:"summary"`
+	Status          entities.NewsStatus   `json:"status"`
+	Type            entities.NewsType     `json:"type"`
+	Priority        entities.NewsPriority `json:"priority"`
+	AuthorID        *uuid.UUID            `json:"authorId"`
+	PublishedAt     *time.Time            `json:"publishedAt"`
+	Slug            string                `json:"slug"`
+	FeaturedImageID *uuid.UUID            `json:"featuredImageId"`
+	ThumbnailID     *uuid.UUID            `json:"thumbnailId"`
+	ViewCount       int64                 `json:"viewCount"`
+	ShareCount      int64                 `json:"shareCount"`
+	LikeCount       int64                 `json:"likeCount"`
+	CommentCount    int64                 `json:"commentCount"`
+	IsFeatured      bool                  `json:"isFeatured"`
+	IsBreaking      bool                  `json:"isBreaking"`
+	IsSticky        bool                  `json:"isSticky"`
+	CreatedAt       time.Time             `json:"createdAt"`
+	UpdatedAt       time.Time             `json:"updatedAt"`
+}
+
+// ListNewsRequest represents a request to list news with pagination and filtering
+type ListNewsRequest struct {
+	PageNumber int `json:"pageNumber" binding:"min=1"`
+	PageSize   int `json:"pageSize" binding:"min=1,max=100"`
+
+	// Filtering
+	Status     *entities.NewsStatus   `json:"status"`
+	Type       *entities.NewsType     `json:"type"`
+	Priority   *entities.NewsPriority `json:"priority"`
+	AuthorID   *uuid.UUID             `json:"authorId"`
+	CategoryID *uuid.UUID             `json:"categoryId"`
+
+	// Search
+	Search string `json:"search"`
+
+	// Date filtering
+	PublishedAfter  *time.Time `json:"publishedAfter"`
+	PublishedBefore *time.Time `json:"publishedBefore"`
+
+	// Flags
+	IsFeatured *bool `json:"isFeatured"`
+	IsBreaking *bool `json:"isBreaking"`
+
+	// Includes
+	IncludeAuthor     bool `json:"includeAuthor"`
+	IncludeEditor     bool `json:"includeEditor"`
+	IncludeCategories bool `json:"includeCategories"`
+	IncludeArticles   bool `json:"includeArticles"`
+	IncludeImages     bool `json:"includeImages"`
+
+	// Sorting
+	SortBy    string `json:"sortBy" binding:"oneof=created_at updated_at published_at title view_count"`
+	SortOrder string `json:"sortOrder" binding:"oneof=asc desc"`
+}
+
+// SearchNewsRequest represents a search request for news
+type SearchNewsRequest struct {
+	Query      string `json:"query" binding:"required"`
+	PageNumber int    `json:"pageNumber" binding:"min=1"`
+	PageSize   int    `json:"pageSize" binding:"min=1,max=100"`
+}
+
 // NewsCategoryResponse represents a news category response
 type NewsCategoryResponse struct {
 	ID          uuid.UUID `json:"id"`
@@ -343,6 +457,15 @@ type CityStats struct {
 	City    string `json:"city"`
 	Country string `json:"country"`
 	Count   int64  `json:"count"`
+}
+
+// ListNewsResponse represents a paginated list of news
+type ListNewsResponse struct {
+	Items      []*NewsListItem `json:"items"`
+	TotalCount int64           `json:"totalCount"`
+	PageSize   int             `json:"pageSize"`
+	PageNumber int             `json:"pageNumber"`
+	TotalPages int             `json:"totalPages"`
 }
 
 // Note: ReferrerStats is defined in article_analytics_types.go to avoid duplication

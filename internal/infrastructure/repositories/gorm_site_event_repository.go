@@ -2,6 +2,9 @@ package repositories
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/zenteam/nextevent-go/internal/domain/entities"
@@ -101,4 +104,228 @@ func (r *GormSiteEventRepository) Count(ctx context.Context) (int64, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&entities.SiteEvent{}).Count(&count).Error
 	return count, err
+}
+
+// GetWithFilters retrieves events with advanced filtering
+func (r *GormSiteEventRepository) GetWithFilters(ctx context.Context, filter *repositories.SiteEventFilter) ([]*entities.SiteEvent, error) {
+	var events []*entities.SiteEvent
+
+	query := r.db.WithContext(ctx).Model(&entities.SiteEvent{})
+
+	// Apply filters
+	query = r.applyFilters(query, filter)
+
+	// Apply sorting
+	query = r.applySorting(query, filter)
+
+	// Apply pagination
+	if filter.Limit > 0 {
+		query = query.Offset(filter.Offset).Limit(filter.Limit)
+	}
+
+	err := query.Find(&events).Error
+	return events, err
+}
+
+// CountWithFilters returns count of events matching filters
+func (r *GormSiteEventRepository) CountWithFilters(ctx context.Context, filter *repositories.SiteEventFilter) (int64, error) {
+	var count int64
+
+	query := r.db.WithContext(ctx).Model(&entities.SiteEvent{})
+
+	// Apply filters (without pagination and sorting)
+	query = r.applyFilters(query, filter)
+
+	err := query.Count(&count).Error
+	return count, err
+}
+
+// GetByCategory retrieves events by category
+func (r *GormSiteEventRepository) GetByCategory(ctx context.Context, categoryID uuid.UUID, offset, limit int) ([]*entities.SiteEvent, error) {
+	var events []*entities.SiteEvent
+	err := r.db.WithContext(ctx).
+		Where("CategoryId = ?", categoryID).
+		Offset(offset).
+		Limit(limit).
+		Order("CreationTime DESC").
+		Find(&events).Error
+	return events, err
+}
+
+// SearchByTitle searches events by title
+func (r *GormSiteEventRepository) SearchByTitle(ctx context.Context, searchTerm string, offset, limit int) ([]*entities.SiteEvent, error) {
+	var events []*entities.SiteEvent
+	searchPattern := fmt.Sprintf("%%%s%%", searchTerm)
+	err := r.db.WithContext(ctx).
+		Where("EventTitle LIKE ?", searchPattern).
+		Offset(offset).
+		Limit(limit).
+		Order("CreationTime DESC").
+		Find(&events).Error
+	return events, err
+}
+
+// GetByDateRange retrieves events within a date range
+func (r *GormSiteEventRepository) GetByDateRange(ctx context.Context, startDate, endDate time.Time, offset, limit int) ([]*entities.SiteEvent, error) {
+	var events []*entities.SiteEvent
+	err := r.db.WithContext(ctx).
+		Where("EventStartDate >= ? AND EventEndDate <= ?", startDate, endDate).
+		Offset(offset).
+		Limit(limit).
+		Order("CreationTime DESC").
+		Find(&events).Error
+	return events, err
+}
+
+// GetByStatus retrieves events by status
+func (r *GormSiteEventRepository) GetByStatus(ctx context.Context, status string, offset, limit int) ([]*entities.SiteEvent, error) {
+	var events []*entities.SiteEvent
+	query := r.db.WithContext(ctx)
+
+	now := time.Now()
+	switch status {
+	case "upcoming":
+		query = query.Where("EventStartDate > ?", now)
+	case "active":
+		query = query.Where("EventStartDate <= ? AND EventEndDate >= ?", now, now)
+	case "completed":
+		query = query.Where("EventEndDate < ?", now)
+	case "cancelled":
+		query = query.Where("IsDeleted = ?", true)
+	}
+
+	err := query.
+		Offset(offset).
+		Limit(limit).
+		Order("CreationTime DESC").
+		Find(&events).Error
+	return events, err
+}
+
+// GetUpcoming retrieves upcoming events
+func (r *GormSiteEventRepository) GetUpcoming(ctx context.Context, offset, limit int) ([]*entities.SiteEvent, error) {
+	var events []*entities.SiteEvent
+	now := time.Now()
+	err := r.db.WithContext(ctx).
+		Where("EventStartDate > ? AND IsDeleted = ?", now, false).
+		Offset(offset).
+		Limit(limit).
+		Order("EventStartDate ASC").
+		Find(&events).Error
+	return events, err
+}
+
+// GetActive retrieves currently active events
+func (r *GormSiteEventRepository) GetActive(ctx context.Context, offset, limit int) ([]*entities.SiteEvent, error) {
+	var events []*entities.SiteEvent
+	now := time.Now()
+	err := r.db.WithContext(ctx).
+		Where("EventStartDate <= ? AND EventEndDate >= ? AND IsDeleted = ?", now, now, false).
+		Offset(offset).
+		Limit(limit).
+		Order("EventStartDate ASC").
+		Find(&events).Error
+	return events, err
+}
+
+// GetCompleted retrieves completed events
+func (r *GormSiteEventRepository) GetCompleted(ctx context.Context, offset, limit int) ([]*entities.SiteEvent, error) {
+	var events []*entities.SiteEvent
+	now := time.Now()
+	err := r.db.WithContext(ctx).
+		Where("EventEndDate < ? AND IsDeleted = ?", now, false).
+		Offset(offset).
+		Limit(limit).
+		Order("EventEndDate DESC").
+		Find(&events).Error
+	return events, err
+}
+
+// Helper methods for filtering and sorting
+
+// applyFilters applies filtering conditions to the query
+func (r *GormSiteEventRepository) applyFilters(query *gorm.DB, filter *repositories.SiteEventFilter) *gorm.DB {
+	// Include/exclude deleted records
+	if !filter.IncludeDeleted {
+		query = query.Where("IsDeleted = ?", false)
+	}
+
+	// Category filter
+	if filter.CategoryID != nil {
+		query = query.Where("CategoryId = ?", *filter.CategoryID)
+	}
+
+	// Search term filter
+	if filter.SearchTerm != "" {
+		searchPattern := fmt.Sprintf("%%%s%%", filter.SearchTerm)
+		query = query.Where("EventTitle LIKE ? OR Tags LIKE ?", searchPattern, searchPattern)
+	}
+
+	// Current status filter
+	if filter.IsCurrent != nil {
+		query = query.Where("IsCurrent = ?", *filter.IsCurrent)
+	}
+
+	// Status filter
+	if filter.Status != "" {
+		now := time.Now()
+		switch filter.Status {
+		case "upcoming":
+			query = query.Where("EventStartDate > ?", now)
+		case "active":
+			query = query.Where("EventStartDate <= ? AND EventEndDate >= ?", now, now)
+		case "completed":
+			query = query.Where("EventEndDate < ?", now)
+		case "cancelled":
+			query = query.Where("IsDeleted = ?", true)
+		}
+	}
+
+	// Date range filters
+	if filter.StartDateFrom != nil {
+		query = query.Where("EventStartDate >= ?", *filter.StartDateFrom)
+	}
+	if filter.StartDateTo != nil {
+		query = query.Where("EventStartDate <= ?", *filter.StartDateTo)
+	}
+
+	return query
+}
+
+// applySorting applies sorting to the query
+func (r *GormSiteEventRepository) applySorting(query *gorm.DB, filter *repositories.SiteEventFilter) *gorm.DB {
+	sortBy := filter.SortBy
+	sortOrder := filter.SortOrder
+
+	// Default sorting
+	if sortBy == "" {
+		sortBy = "createdAt"
+	}
+	if sortOrder == "" {
+		sortOrder = "desc"
+	}
+
+	// Map sort fields to database columns
+	var orderClause string
+	switch strings.ToLower(sortBy) {
+	case "title":
+		orderClause = "EventTitle"
+	case "startdate":
+		orderClause = "EventStartDate"
+	case "enddate":
+		orderClause = "EventEndDate"
+	case "createdat":
+		orderClause = "CreationTime"
+	default:
+		orderClause = "CreationTime"
+	}
+
+	// Add sort order
+	if strings.ToLower(sortOrder) == "asc" {
+		orderClause += " ASC"
+	} else {
+		orderClause += " DESC"
+	}
+
+	return query.Order(orderClause)
 }

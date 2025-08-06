@@ -5,7 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"go.uber.org/zap"
@@ -362,4 +366,91 @@ type UserListResponse struct {
 // UserData represents user data in the response
 type UserData struct {
 	OpenIDs []string `json:"openid"`
+}
+
+// MaterialUploadResponse represents WeChat material upload response
+type MaterialUploadResponse struct {
+	Type      string `json:"type"`
+	MediaID   string `json:"media_id"`
+	CreatedAt int64  `json:"created_at"`
+	URL       string `json:"url"`
+	ErrCode   int    `json:"errcode"`
+	ErrMsg    string `json:"errmsg"`
+}
+
+// UploadMaterial uploads an image to WeChat and returns MediaID and URL
+func (c *WeChatAPIClient) UploadMaterial(ctx context.Context, filePath string) (*MaterialUploadResponse, error) {
+	token, err := c.GetAccessToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get access token: %w", err)
+	}
+
+	// Open the file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	// Create a buffer to write our multipart form data
+	var requestBody bytes.Buffer
+	writer := multipart.NewWriter(&requestBody)
+
+	// Add the file field
+	part, err := writer.CreateFormFile("media", filepath.Base(filePath))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+
+	// Copy file content to the form field
+	_, err = io.Copy(part, file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to copy file content: %w", err)
+	}
+
+	// Add the type field
+	err = writer.WriteField("type", "image")
+	if err != nil {
+		return nil, fmt.Errorf("failed to write type field: %w", err)
+	}
+
+	// Close the writer to finalize the form
+	err = writer.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	// Create the request
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=%s&type=image", token)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, &requestBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set the content type with boundary
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Send the request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload material: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Parse the response
+	var uploadResp MaterialUploadResponse
+	if err := json.NewDecoder(resp.Body).Decode(&uploadResp); err != nil {
+		return nil, fmt.Errorf("failed to decode upload response: %w", err)
+	}
+
+	if uploadResp.ErrCode != 0 {
+		return nil, fmt.Errorf("WeChat material upload error: %d - %s", uploadResp.ErrCode, uploadResp.ErrMsg)
+	}
+
+	c.logger.Info("WeChat material uploaded successfully",
+		zap.String("filePath", filePath),
+		zap.String("mediaID", uploadResp.MediaID),
+		zap.String("url", uploadResp.URL))
+
+	return &uploadResp, nil
 }

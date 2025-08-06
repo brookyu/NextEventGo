@@ -406,3 +406,206 @@ type NewsCategoryListResponse struct {
 	Limit      int                    `json:"limit"`
 	Pages      int                    `json:"pages"`
 }
+
+// Article Selection DTOs for News Creation
+
+// ArticleSelectionDTO represents an article available for selection
+type ArticleSelectionDTO struct {
+	ID                 uuid.UUID  `json:"id"`
+	Title              string     `json:"title"`
+	Summary            string     `json:"summary"`
+	Author             string     `json:"author"`
+	CategoryID         uuid.UUID  `json:"categoryId"`
+	CategoryName       string     `json:"categoryName"`
+	FrontCoverImageURL string     `json:"frontCoverImageUrl"`
+	IsPublished        bool       `json:"isPublished"`
+	PublishedAt        *time.Time `json:"publishedAt"`
+	ViewCount          int64      `json:"viewCount"`
+	ReadCount          int64      `json:"readCount"`
+	Tags               []string   `json:"tags"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          *time.Time `json:"updatedAt"`
+
+	// Selection state
+	IsSelected bool `json:"isSelected"`
+
+	// News-specific settings when selected
+	IsMainStory   bool   `json:"isMainStory"`
+	IsFeatured    bool   `json:"isFeatured"`
+	Section       string `json:"section"`
+	CustomSummary string `json:"customSummary"`
+}
+
+// ArticleSelectionSearchRequest represents a request to search articles for selection
+type ArticleSelectionSearchRequest struct {
+	Query         string     `form:"query"`
+	CategoryID    *uuid.UUID `form:"categoryId"`
+	Author        string     `form:"author"`
+	IsPublished   *bool      `form:"isPublished"`
+	Tags          []string   `form:"tags"`
+	CreatedAfter  *time.Time `form:"createdAfter"`
+	CreatedBefore *time.Time `form:"createdBefore"`
+	SortBy        string     `form:"sortBy,default=created_at"`
+	SortOrder     string     `form:"sortOrder,default=desc"`
+	Page          int        `form:"page,default=1"`
+	PageSize      int        `form:"pageSize,default=20"`
+}
+
+// ArticleSelectionResponse represents the response for article selection
+type ArticleSelectionResponse struct {
+	Articles   []ArticleSelectionDTO `json:"articles"`
+	Pagination PaginationDTO         `json:"pagination"`
+	Categories []CategoryDTO         `json:"categories"`
+	Authors    []string              `json:"authors"`
+	Tags       []string              `json:"tags"`
+}
+
+// ImageSelectionDTO represents an image available for selection
+type ImageSelectionDTO struct {
+	ID           uuid.UUID `json:"id"`
+	Filename     string    `json:"filename"`
+	OriginalURL  string    `json:"originalUrl"`
+	ThumbnailURL string    `json:"thumbnailUrl"`
+	FileSize     int64     `json:"fileSize"`
+	MimeType     string    `json:"mimeType"`
+	Width        int       `json:"width"`
+	Height       int       `json:"height"`
+	AltText      string    `json:"altText"`
+	Description  string    `json:"description"`
+	CreatedAt    time.Time `json:"createdAt"`
+
+	// Selection state
+	IsSelected bool `json:"isSelected"`
+}
+
+// ImageSelectionSearchRequest represents a request to search images for selection
+type ImageSelectionSearchRequest struct {
+	Query     string `form:"query"`
+	MimeType  string `form:"mimeType"`
+	MinWidth  int    `form:"minWidth"`
+	MaxWidth  int    `form:"maxWidth"`
+	MinHeight int    `form:"minHeight"`
+	MaxHeight int    `form:"maxHeight"`
+	SortBy    string `form:"sortBy,default=created_at"`
+	SortOrder string `form:"sortOrder,default=desc"`
+	Page      int    `form:"page,default=1"`
+	PageSize  int    `form:"pageSize,default=20"`
+}
+
+// ImageSelectionResponse represents the response for image selection
+type ImageSelectionResponse struct {
+	Images     []ImageSelectionDTO `json:"images"`
+	Pagination PaginationDTO       `json:"pagination"`
+}
+
+// NewsCreationStateDTO represents the current state of news creation
+type NewsCreationStateDTO struct {
+	// Basic info
+	Title       string `json:"title"`
+	Subtitle    string `json:"subtitle"`
+	Description string `json:"description"`
+	Summary     string `json:"summary"`
+
+	// Selected articles
+	SelectedArticles []ArticleSelectionDTO `json:"selectedArticles"`
+
+	// Selected images
+	FeaturedImage  *ImageSelectionDTO `json:"featuredImage"`
+	ThumbnailImage *ImageSelectionDTO `json:"thumbnailImage"`
+
+	// Settings
+	Type     entities.NewsType     `json:"type"`
+	Priority entities.NewsPriority `json:"priority"`
+
+	// Configuration
+	AllowComments bool `json:"allowComments"`
+	AllowSharing  bool `json:"allowSharing"`
+	IsFeatured    bool `json:"isFeatured"`
+	IsBreaking    bool `json:"isBreaking"`
+	RequireAuth   bool `json:"requireAuth"`
+
+	// Scheduling
+	ScheduledAt *time.Time `json:"scheduledAt"`
+	ExpiresAt   *time.Time `json:"expiresAt"`
+
+	// Categories
+	SelectedCategories []uuid.UUID `json:"selectedCategories"`
+}
+
+// NewsCreationFormDTO represents the enhanced news creation form with selectors
+type NewsCreationFormDTO struct {
+	// Basic Information
+	Title       string `json:"title" binding:"required"`
+	Subtitle    string `json:"subtitle"`
+	Summary     string `json:"summary"`
+	Description string `json:"description"`
+
+	// Type and Priority
+	Type     string `json:"type" binding:"required"`     // "regular", "breaking", "featured"
+	Priority string `json:"priority" binding:"required"` // "low", "medium", "high", "urgent"
+
+	// Image Selection (replaces Featured Image URL)
+	FeaturedImageID  *uuid.UUID `json:"featuredImageId"`  // Selected from image selector
+	ThumbnailImageID *uuid.UUID `json:"thumbnailImageId"` // Optional thumbnail
+
+	// Article Selection
+	SelectedArticleIDs []uuid.UUID `json:"selectedArticleIds"` // Selected from article selector
+
+	// Article Settings (per selected article)
+	ArticleSettings map[string]ArticleNewsSettings `json:"articleSettings"`
+
+	// Categories
+	CategoryIDs []uuid.UUID `json:"categoryIds"`
+
+	// Settings
+	AllowComments bool `json:"allowComments"`
+	AllowSharing  bool `json:"allowSharing"`
+	IsFeatured    bool `json:"isFeatured"`
+	IsBreaking    bool `json:"isBreaking"`
+	RequireAuth   bool `json:"requireAuth"`
+
+	// Scheduling
+	ScheduledAt *time.Time `json:"scheduledAt"`
+	ExpiresAt   *time.Time `json:"expiresAt"`
+
+	// WeChat Integration
+	CreateWeChatDraft bool                `json:"createWeChatDraft"`
+	WeChatSettings    *WeChatNewsSettings `json:"weChatSettings"`
+}
+
+// ArticleNewsSettings represents settings for an article within news
+type ArticleNewsSettings struct {
+	IsMainStory   bool   `json:"isMainStory"`   // Mark as main story
+	IsFeatured    bool   `json:"isFeatured"`    // Feature this article
+	Section       string `json:"section"`       // Section within news (e.g., "top", "featured", "related")
+	CustomSummary string `json:"customSummary"` // Override article summary for this news
+	DisplayOrder  int    `json:"displayOrder"`  // Order within the news
+}
+
+// WeChatNewsSettings represents WeChat-specific settings
+type WeChatNewsSettings struct {
+	Title        string     `json:"title"`        // Custom WeChat title
+	Summary      string     `json:"summary"`      // Custom WeChat summary
+	CoverImageID *uuid.UUID `json:"coverImageId"` // WeChat cover image
+	AutoPublish  bool       `json:"autoPublish"`  // Auto-publish to WeChat
+}
+
+// NewsCreationResponseDTO represents the response after creating news
+type NewsCreationResponseDTO struct {
+	ID      uuid.UUID `json:"id"`
+	Title   string    `json:"title"`
+	Status  string    `json:"status"`
+	Message string    `json:"message"`
+
+	// Created resources
+	CreatedArticles int `json:"createdArticles"`
+	ProcessedImages int `json:"processedImages"`
+
+	// WeChat integration results
+	WeChatDraftID     string `json:"weChatDraftId,omitempty"`
+	WeChatDraftStatus string `json:"weChatDraftStatus,omitempty"`
+
+	// Scheduling info
+	ScheduledAt *time.Time `json:"scheduledAt,omitempty"`
+	ExpiresAt   *time.Time `json:"expiresAt,omitempty"`
+}

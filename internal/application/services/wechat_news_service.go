@@ -3,6 +3,11 @@ package services
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -311,6 +316,12 @@ func (s *WeChatNewsServiceImpl) optimizeContentForWeChat(content string) string 
 	// Add WeChat-specific formatting
 	content = s.addWeChatFormatting(content)
 
+	// Optimize text formatting for WeChat
+	content = s.optimizeTextForWeChat(content)
+
+	// Add WeChat-specific CSS classes
+	content = s.addWeChatCSS(content)
+
 	return content
 }
 
@@ -346,7 +357,145 @@ func (s *WeChatNewsServiceImpl) optimizeImages(content string) string {
 
 func (s *WeChatNewsServiceImpl) addWeChatFormatting(content string) string {
 	// Add WeChat-specific CSS classes or formatting
-	// This is a placeholder for WeChat-specific optimizations
+	// Convert headings to WeChat-friendly format
+	content = regexp.MustCompile(`<h([1-6])([^>]*)>`).ReplaceAllString(content, `<p style="font-size: 1.${1}em; font-weight: bold; margin: 1em 0;"$2>`)
+	content = regexp.MustCompile(`</h[1-6]>`).ReplaceAllString(content, `</p>`)
+
+	// Optimize paragraph spacing
+	content = regexp.MustCompile(`<p([^>]*)>`).ReplaceAllString(content, `<p style="margin: 0.8em 0; line-height: 1.6;"$1>`)
+
+	// Add emphasis styling
+	content = regexp.MustCompile(`<strong([^>]*)>`).ReplaceAllString(content, `<span style="font-weight: bold; color: #2c3e50;"$1>`)
+	content = regexp.MustCompile(`</strong>`).ReplaceAllString(content, `</span>`)
+
+	return content
+}
+
+func (s *WeChatNewsServiceImpl) optimizeTextForWeChat(content string) string {
+	// Optimize text length and readability for WeChat
+	// Break long paragraphs
+	content = s.breakLongParagraphs(content)
+
+	// Add proper spacing around punctuation
+	content = s.optimizePunctuation(content)
+
+	// Convert special characters
+	content = s.convertSpecialCharacters(content)
+
+	return content
+}
+
+func (s *WeChatNewsServiceImpl) addWeChatCSS(content string) string {
+	// Add WeChat-specific CSS styling
+	wechatCSS := `
+<style>
+.wechat-content {
+	font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+	font-size: 16px;
+	line-height: 1.6;
+	color: #333;
+	word-wrap: break-word;
+}
+.wechat-content img {
+	max-width: 100%;
+	height: auto;
+	display: block;
+	margin: 1em auto;
+}
+.wechat-content blockquote {
+	border-left: 4px solid #ddd;
+	padding-left: 1em;
+	margin: 1em 0;
+	color: #666;
+	font-style: italic;
+}
+</style>
+`
+
+	// Wrap content in WeChat container
+	content = fmt.Sprintf(`%s<div class="wechat-content">%s</div>`, wechatCSS, content)
+
+	return content
+}
+
+func (s *WeChatNewsServiceImpl) breakLongParagraphs(content string) string {
+	// Find paragraphs longer than 200 characters and break them
+	paragraphRegex := regexp.MustCompile(`<p[^>]*>([^<]{200,}?)</p>`)
+
+	content = paragraphRegex.ReplaceAllStringFunc(content, func(match string) string {
+		// Extract paragraph content
+		innerRegex := regexp.MustCompile(`<p([^>]*)>(.*?)</p>`)
+		matches := innerRegex.FindStringSubmatch(match)
+		if len(matches) < 3 {
+			return match
+		}
+
+		attrs := matches[1]
+		text := matches[2]
+
+		// Break at sentence boundaries
+		sentences := regexp.MustCompile(`([.!?。！？])\s+`).Split(text, -1)
+		if len(sentences) <= 1 {
+			return match
+		}
+
+		// Group sentences into smaller paragraphs
+		var result strings.Builder
+		currentParagraph := ""
+
+		for i, sentence := range sentences {
+			if i > 0 {
+				sentence = strings.TrimSpace(sentence)
+			}
+
+			if len(currentParagraph)+len(sentence) > 150 && currentParagraph != "" {
+				result.WriteString(fmt.Sprintf(`<p%s>%s</p>`, attrs, currentParagraph))
+				currentParagraph = sentence
+			} else {
+				if currentParagraph != "" {
+					currentParagraph += ". " + sentence
+				} else {
+					currentParagraph = sentence
+				}
+			}
+		}
+
+		if currentParagraph != "" {
+			result.WriteString(fmt.Sprintf(`<p%s>%s</p>`, attrs, currentParagraph))
+		}
+
+		return result.String()
+	})
+
+	return content
+}
+
+func (s *WeChatNewsServiceImpl) optimizePunctuation(content string) string {
+	// Add proper spacing around Chinese punctuation
+	content = regexp.MustCompile(`([，。！？；：])`).ReplaceAllString(content, `$1 `)
+
+	// Remove extra spaces
+	content = regexp.MustCompile(`\s+`).ReplaceAllString(content, ` `)
+
+	return content
+}
+
+func (s *WeChatNewsServiceImpl) convertSpecialCharacters(content string) string {
+	// Convert HTML entities to proper characters
+	replacements := map[string]string{
+		"&nbsp;":   " ",
+		"&amp;":    "&",
+		"&lt;":     "<",
+		"&gt;":     ">",
+		"&quot;":   "\"",
+		"&#39;":    "'",
+		"&hellip;": "...",
+	}
+
+	for entity, char := range replacements {
+		content = strings.ReplaceAll(content, entity, char)
+	}
+
 	return content
 }
 
@@ -462,25 +611,144 @@ func (s *WeChatNewsServiceImpl) publishWeChatDraftAPI(ctx context.Context, draft
 }
 
 func (s *WeChatNewsServiceImpl) uploadImageToWeChat(ctx context.Context, imageURL string) (string, error) {
-	// This would integrate with actual WeChat Media API
-	mediaID := fmt.Sprintf("media_%d", time.Now().Unix())
+	if s.wechatClient == nil {
+		// Fallback for testing/development
+		mediaID := fmt.Sprintf("media_%d", time.Now().Unix())
+		s.logger.Info("Mock: Uploaded image to WeChat",
+			zap.String("imageURL", imageURL),
+			zap.String("mediaID", mediaID))
+		return mediaID, nil
+	}
+
+	// Download image from URL
+	imageData, err := s.downloadImage(ctx, imageURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download image: %w", err)
+	}
+
+	// Upload to WeChat as temporary media
+	mediaInfo, err := s.wechatService.UploadMediaFromBytes(ctx, "image", s.extractFilename(imageURL), imageData)
+	if err != nil {
+		return "", fmt.Errorf("failed to upload image to WeChat: %w", err)
+	}
 
 	s.logger.Info("Uploaded image to WeChat",
 		zap.String("imageURL", imageURL),
-		zap.String("mediaID", mediaID))
+		zap.String("mediaID", mediaInfo.MediaID))
 
-	return mediaID, nil
+	return mediaInfo.MediaID, nil
 }
 
 func (s *WeChatNewsServiceImpl) uploadImageToWeChatAndGetURL(ctx context.Context, imageURL string) (string, error) {
-	// This would integrate with actual WeChat Media API to get permanent URL
-	newURL := fmt.Sprintf("https://mmbiz.qpic.cn/mmbiz_jpg/%s", time.Now().Unix())
+	if s.wechatClient == nil {
+		// Fallback for testing/development
+		newURL := fmt.Sprintf("https://mmbiz.qpic.cn/mmbiz_jpg/%d", time.Now().Unix())
+		s.logger.Info("Mock: Uploaded image to WeChat and got URL",
+			zap.String("originalURL", imageURL),
+			zap.String("newURL", newURL))
+		return newURL, nil
+	}
 
-	s.logger.Info("Uploaded image to WeChat and got URL",
+	// Download image from URL
+	imageData, err := s.downloadImage(ctx, imageURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download image: %w", err)
+	}
+
+	// Save image temporarily for upload
+	tempFilename := fmt.Sprintf("/tmp/wechat_image_%d_%s", time.Now().Unix(), s.extractFilename(imageURL))
+	if err := os.WriteFile(tempFilename, imageData, 0644); err != nil {
+		return "", fmt.Errorf("failed to save temporary image: %w", err)
+	}
+	defer os.Remove(tempFilename) // Clean up
+
+	// Upload to WeChat as permanent media
+	permanentMedia, err := s.wechatService.UploadPermanentMedia(ctx, "image", tempFilename)
+	if err != nil {
+		return "", fmt.Errorf("failed to upload permanent image to WeChat: %w", err)
+	}
+
+	// Get permanent URL
+	permanentURL, err := s.wechatService.GetMediaURL(ctx, permanentMedia.MediaID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get permanent URL: %w", err)
+	}
+
+	s.logger.Info("Uploaded image to WeChat and got permanent URL",
 		zap.String("originalURL", imageURL),
-		zap.String("newURL", newURL))
+		zap.String("permanentURL", permanentURL))
 
-	return newURL, nil
+	return permanentURL, nil
+}
+
+// Helper methods for image processing
+
+func (s *WeChatNewsServiceImpl) downloadImage(ctx context.Context, imageURL string) ([]byte, error) {
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	// Create request
+	req, err := http.NewRequestWithContext(ctx, "GET", imageURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set user agent
+	req.Header.Set("User-Agent", "NextEvent-WeChat-Bot/1.0")
+
+	// Make request
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download image: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check status code
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to download image: status %d", resp.StatusCode)
+	}
+
+	// Check content type
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "image/") {
+		return nil, fmt.Errorf("invalid content type: %s", contentType)
+	}
+
+	// Check content length (limit to 10MB)
+	if resp.ContentLength > 10*1024*1024 {
+		return nil, fmt.Errorf("image too large: %d bytes", resp.ContentLength)
+	}
+
+	// Read response body
+	imageData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read image data: %w", err)
+	}
+
+	return imageData, nil
+}
+
+func (s *WeChatNewsServiceImpl) extractFilename(imageURL string) string {
+	// Parse URL
+	u, err := url.Parse(imageURL)
+	if err != nil {
+		return fmt.Sprintf("image_%d.jpg", time.Now().Unix())
+	}
+
+	// Extract filename from path
+	filename := filepath.Base(u.Path)
+	if filename == "." || filename == "/" {
+		return fmt.Sprintf("image_%d.jpg", time.Now().Unix())
+	}
+
+	// Ensure it has an extension
+	if !strings.Contains(filename, ".") {
+		filename += ".jpg"
+	}
+
+	return filename
 }
 
 // WeChatArticle represents an article formatted for WeChat

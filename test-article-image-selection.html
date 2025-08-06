@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article & Image Selection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .section {
+            flex: 1;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .item {
+            border: 1px solid #eee;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .item:hover {
+            background-color: #f5f5f5;
+        }
+        .item.selected {
+            background-color: #e3f2fd;
+            border-color: #2196f3;
+        }
+        .article-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .article-summary {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .article-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        .image-item {
+            text-align: center;
+        }
+        .image-preview {
+            max-width: 100%;
+            max-height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .image-info {
+            font-size: 12px;
+            color: #666;
+        }
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .pagination button {
+            margin: 0 5px;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+        }
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .selected-items {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            color: red;
+            padding: 10px;
+            background-color: #ffebee;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Article & Image Selection Test</h1>
+    
+    <div class="container">
+        <!-- Articles Section -->
+        <div class="section">
+            <h2>Articles</h2>
+            <input type="text" id="articleSearch" class="search-box" placeholder="Search articles by title...">
+            
+            <div id="articleError" class="error" style="display: none;"></div>
+            <div id="articleLoading" class="loading" style="display: none;">Loading articles...</div>
+            <div id="articleList"></div>
+            
+            <div class="pagination">
+                <button id="articlePrevBtn" onclick="loadArticles(currentArticlePage - 1)">Previous</button>
+                <span id="articlePageInfo"></span>
+                <button id="articleNextBtn" onclick="loadArticles(currentArticlePage + 1)">Next</button>
+            </div>
+            
+            <div class="selected-items">
+                <h3>Selected Articles (<span id="selectedArticleCount">0</span>)</h3>
+                <div id="selectedArticles"></div>
+            </div>
+        </div>
+        
+        <!-- Images Section -->
+        <div class="section">
+            <h2>Images</h2>
+            <input type="text" id="imageSearch" class="search-box" placeholder="Search images by filename...">
+            
+            <div id="imageError" class="error" style="display: none;"></div>
+            <div id="imageLoading" class="loading" style="display: none;">Loading images...</div>
+            <div id="imageList"></div>
+            
+            <div class="pagination">
+                <button id="imagePrevBtn" onclick="loadImages(currentImagePage - 1)">Previous</button>
+                <span id="imagePageInfo"></span>
+                <button id="imageNextBtn" onclick="loadImages(currentImagePage + 1)">Next</button>
+            </div>
+            
+            <div class="selected-items">
+                <h3>Selected Images (<span id="selectedImageCount">0</span>)</h3>
+                <div id="selectedImages"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/v2';
+        
+        let currentArticlePage = 1;
+        let currentImagePage = 1;
+        let selectedArticles = new Set();
+        let selectedImages = new Set();
+        let articleData = {};
+        let imageData = {};
+
+        // Load articles
+        async function loadArticles(page = 1) {
+            const searchQuery = document.getElementById('articleSearch').value;
+            const loading = document.getElementById('articleLoading');
+            const error = document.getElementById('articleError');
+            const list = document.getElementById('articleList');
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            list.innerHTML = '';
+            
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    pageSize: 10,
+                    query: searchQuery
+                });
+                
+                const response = await fetch(`${API_BASE}/news/articles/search?${params}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to load articles');
+                }
+                
+                currentArticlePage = page;
+                displayArticles(data.data || data);
+                updateArticlePagination(data.data?.pagination || data.pagination);
+                
+            } catch (err) {
+                error.textContent = err.message;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Load images
+        async function loadImages(page = 1) {
+            const searchQuery = document.getElementById('imageSearch').value;
+            const loading = document.getElementById('imageLoading');
+            const error = document.getElementById('imageError');
+            const list = document.getElementById('imageList');
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            list.innerHTML = '';
+            
+            try {
+                const params = new URLSearchParams({
+                    page: page,
+                    pageSize: 10,
+                    query: searchQuery
+                });
+                
+                const response = await fetch(`${API_BASE}/news/images/search?${params}`);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to load images');
+                }
+                
+                currentImagePage = page;
+                displayImages(data.data || data);
+                updateImagePagination(data.data?.pagination || data.pagination);
+                
+            } catch (err) {
+                error.textContent = err.message;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Display articles
+        function displayArticles(data) {
+            const list = document.getElementById('articleList');
+            const articles = data.articles || [];
+            
+            articles.forEach(article => {
+                articleData[article.id] = article;
+                
+                const item = document.createElement('div');
+                item.className = 'item';
+                item.onclick = () => toggleArticleSelection(article.id);
+                
+                if (selectedArticles.has(article.id)) {
+                    item.classList.add('selected');
+                }
+                
+                item.innerHTML = `
+                    <div class="article-title">${article.title || 'Untitled'}</div>
+                    <div class="article-summary">${article.summary || 'No summary'}</div>
+                    <div class="article-meta">
+                        Author: ${article.author || 'Unknown'} | 
+                        Views: ${article.view_count || article.viewCount || 0} |
+                        Created: ${new Date(article.created_at || article.createdAt).toLocaleDateString()}
+                    </div>
+                `;
+                
+                list.appendChild(item);
+            });
+        }
+
+        // Display images
+        function displayImages(data) {
+            const list = document.getElementById('imageList');
+            const images = data.images || [];
+            
+            images.forEach(image => {
+                imageData[image.id] = image;
+                
+                const item = document.createElement('div');
+                item.className = 'item image-item';
+                item.onclick = () => toggleImageSelection(image.id);
+                
+                if (selectedImages.has(image.id)) {
+                    item.classList.add('selected');
+                }
+                
+                // Handle different URL formats
+                const imageUrl = image.original_url || image.originalUrl || 
+                               image.url || `/uploads/${image.storage_path}` || 
+                               `/placeholder.jpg`;
+                
+                item.innerHTML = `
+                    <img src="${imageUrl}" alt="${image.alt_text || image.filename}" class="image-preview" 
+                         onerror="this.src='/placeholder.jpg'">
+                    <div class="image-info">
+                        <div><strong>${image.filename}</strong></div>
+                        <div>${image.width}x${image.height} | ${(image.file_size / 1024).toFixed(1)}KB</div>
+                        <div>${image.mime_type}</div>
+                    </div>
+                `;
+                
+                list.appendChild(item);
+            });
+        }
+
+        // Toggle article selection
+        function toggleArticleSelection(articleId) {
+            if (selectedArticles.has(articleId)) {
+                selectedArticles.delete(articleId);
+            } else {
+                selectedArticles.add(articleId);
+            }
+            updateSelectedArticles();
+            loadArticles(currentArticlePage); // Refresh to update selection state
+        }
+
+        // Toggle image selection
+        function toggleImageSelection(imageId) {
+            if (selectedImages.has(imageId)) {
+                selectedImages.delete(imageId);
+            } else {
+                selectedImages.add(imageId);
+            }
+            updateSelectedImages();
+            loadImages(currentImagePage); // Refresh to update selection state
+        }
+
+        // Update selected articles display
+        function updateSelectedArticles() {
+            const count = document.getElementById('selectedArticleCount');
+            const list = document.getElementById('selectedArticles');
+            
+            count.textContent = selectedArticles.size;
+            list.innerHTML = '';
+            
+            selectedArticles.forEach(articleId => {
+                const article = articleData[articleId];
+                if (article) {
+                    const item = document.createElement('div');
+                    item.innerHTML = `
+                        <small>${article.title || 'Untitled'}</small>
+                        <button onclick="toggleArticleSelection('${articleId}')" style="float: right;">Remove</button>
+                    `;
+                    list.appendChild(item);
+                }
+            });
+        }
+
+        // Update selected images display
+        function updateSelectedImages() {
+            const count = document.getElementById('selectedImageCount');
+            const list = document.getElementById('selectedImages');
+            
+            count.textContent = selectedImages.size;
+            list.innerHTML = '';
+            
+            selectedImages.forEach(imageId => {
+                const image = imageData[imageId];
+                if (image) {
+                    const item = document.createElement('div');
+                    item.innerHTML = `
+                        <small>${image.filename}</small>
+                        <button onclick="toggleImageSelection('${imageId}')" style="float: right;">Remove</button>
+                    `;
+                    list.appendChild(item);
+                }
+            });
+        }
+
+        // Update pagination
+        function updateArticlePagination(pagination) {
+            const prevBtn = document.getElementById('articlePrevBtn');
+            const nextBtn = document.getElementById('articleNextBtn');
+            const pageInfo = document.getElementById('articlePageInfo');
+            
+            prevBtn.disabled = !pagination.hasPrev;
+            nextBtn.disabled = !pagination.hasNext;
+            pageInfo.textContent = `Page ${pagination.page} of ${pagination.totalPages} (${pagination.total} total)`;
+        }
+
+        function updateImagePagination(pagination) {
+            const prevBtn = document.getElementById('imagePrevBtn');
+            const nextBtn = document.getElementById('imageNextBtn');
+            const pageInfo = document.getElementById('imagePageInfo');
+            
+            prevBtn.disabled = !pagination.hasPrev;
+            nextBtn.disabled = !pagination.hasNext;
+            pageInfo.textContent = `Page ${pagination.page} of ${pagination.totalPages} (${pagination.total} total)`;
+        }
+
+        // Search handlers
+        document.getElementById('articleSearch').addEventListener('input', () => {
+            clearTimeout(window.articleSearchTimeout);
+            window.articleSearchTimeout = setTimeout(() => loadArticles(1), 500);
+        });
+
+        document.getElementById('imageSearch').addEventListener('input', () => {
+            clearTimeout(window.imageSearchTimeout);
+            window.imageSearchTimeout = setTimeout(() => loadImages(1), 500);
+        });
+
+        // Initial load
+        loadArticles();
+        loadImages();
+    </script>
+</body>
+</html>

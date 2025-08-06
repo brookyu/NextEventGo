@@ -41,36 +41,49 @@ const (
 
 // News represents a news publication that can contain multiple articles
 type News struct {
-	ID          uuid.UUID `gorm:"type:char(36);primary_key" json:"id"`
-	Title       string    `gorm:"type:varchar(500);not null;index" json:"title"`
-	Subtitle    string    `gorm:"type:varchar(1000)" json:"subtitle"`
-	Description string    `gorm:"type:text" json:"description"`
-	Content     string    `gorm:"type:longtext" json:"content"`
-	Summary     string    `gorm:"type:text" json:"summary"`
+	ID                   uuid.UUID  `gorm:"column:Id;type:char(36);primary_key" json:"id"`
+	Title                string     `gorm:"column:Title;type:longtext" json:"title"`
+	MediaId              *string    `gorm:"column:MediaId;type:varchar(500)" json:"media_id"`
+	FrontCoverImageUrl   *string    `gorm:"column:FrontCoverImageUrl;type:varchar(500)" json:"front_cover_image_url"`
+	CategoryId           uuid.UUID  `gorm:"column:CategoryId;type:char(36);not null" json:"category_id"`
+	CreationTime         time.Time  `gorm:"column:CreationTime;type:datetime(6);not null" json:"creation_time"`
+	CreatorId            *uuid.UUID `gorm:"column:CreatorId;type:char(36)" json:"creator_id"`
+	LastModificationTime *time.Time `gorm:"column:LastModificationTime;type:datetime(6)" json:"last_modification_time"`
+	LastModifierId       *uuid.UUID `gorm:"column:LastModifierId;type:char(36)" json:"last_modifier_id"`
+	IsDeleted            bool       `gorm:"column:IsDeleted;type:tinyint(1);not null;default:0" json:"is_deleted"`
+	DeleterId            *uuid.UUID `gorm:"column:DeleterId;type:char(36)" json:"deleter_id"`
+	DeletionTime         *time.Time `gorm:"column:DeletionTime;type:datetime(6)" json:"deletion_time"`
+	FrontCoverImageId    *string    `gorm:"column:FrontCoverImageId;type:varchar(36)" json:"front_cover_image_id"`
+	ScheduledAt          *time.Time `gorm:"column:ScheduledAt;type:datetime(6)" json:"scheduled_at"`
+	ExpiresAt            *time.Time `gorm:"column:ExpiresAt;type:datetime(6)" json:"expires_at"`
 
-	// Metadata
-	Status   NewsStatus   `gorm:"type:varchar(20);not null;default:'draft';index" json:"status"`
-	Type     NewsType     `gorm:"type:varchar(20);not null;default:'regular';index" json:"type"`
-	Priority NewsPriority `gorm:"type:varchar(20);not null;default:'normal';index" json:"priority"`
+	// Additional fields for compatibility (not in database but used by application)
+	Subtitle    string `gorm:"-" json:"subtitle"`
+	Description string `gorm:"-" json:"description"`
+	Content     string `gorm:"-" json:"content"`
+	Summary     string `gorm:"-" json:"summary"`
 
-	// Publishing information
-	AuthorID    *uuid.UUID `gorm:"type:char(36);index" json:"author_id"`
-	EditorID    *uuid.UUID `gorm:"type:char(36);index" json:"editor_id"`
-	PublishedAt *time.Time `gorm:"index" json:"published_at"`
-	ScheduledAt *time.Time `gorm:"index" json:"scheduled_at"`
-	ExpiresAt   *time.Time `gorm:"index" json:"expires_at"`
+	// Metadata (not in database but used by application)
+	Status   NewsStatus   `gorm:"-" json:"status"`
+	Type     NewsType     `gorm:"-" json:"type"`
+	Priority NewsPriority `gorm:"-" json:"priority"`
 
-	// SEO and social media
-	Slug            string `gorm:"type:varchar(500);unique;index" json:"slug"`
-	MetaTitle       string `gorm:"type:varchar(500)" json:"meta_title"`
-	MetaDescription string `gorm:"type:varchar(1000)" json:"meta_description"`
-	Keywords        string `gorm:"type:varchar(1000)" json:"keywords"`
-	Tags            string `gorm:"type:varchar(1000)" json:"tags"`
+	// Publishing information (not in database but used by application)
+	AuthorID    *uuid.UUID `gorm:"-" json:"author_id"`
+	EditorID    *uuid.UUID `gorm:"-" json:"editor_id"`
+	PublishedAt *time.Time `gorm:"-" json:"published_at"`
 
-	// Media
-	FeaturedImageID *uuid.UUID `gorm:"type:char(36);index" json:"featured_image_id"`
-	ThumbnailID     *uuid.UUID `gorm:"type:char(36);index" json:"thumbnail_id"`
-	GalleryImageIDs string     `gorm:"type:text" json:"gallery_image_ids"` // JSON array of image IDs
+	// SEO and social media (not in database but used by application)
+	Slug            string `gorm:"-" json:"slug"`
+	MetaTitle       string `gorm:"-" json:"meta_title"`
+	MetaDescription string `gorm:"-" json:"meta_description"`
+	Keywords        string `gorm:"-" json:"keywords"`
+	Tags            string `gorm:"-" json:"tags"`
+
+	// Media (compatibility)
+	FeaturedImageID *uuid.UUID `gorm:"-" json:"featured_image_id"`
+	ThumbnailID     *uuid.UUID `gorm:"-" json:"thumbnail_id"`
+	GalleryImageIDs string     `gorm:"-" json:"gallery_image_ids"` // JSON array of image IDs
 
 	// WeChat integration
 	WeChatDraftID     string     `gorm:"type:varchar(100);index" json:"wechat_draft_id"`
@@ -180,30 +193,45 @@ type NewsCategoryAssociation struct {
 
 // NewsArticle represents the many-to-many relationship between news and articles
 type NewsArticle struct {
-	ID        uuid.UUID `gorm:"type:char(36);primary_key" json:"id"`
-	NewsID    uuid.UUID `gorm:"type:char(36);not null;index" json:"news_id"`
-	ArticleID uuid.UUID `gorm:"type:char(36);not null;index" json:"article_id"`
+	Id                   uuid.UUID  `gorm:"column:Id;type:char(36);primary_key" json:"id"`
+	SiteArticleId        uuid.UUID  `gorm:"column:SiteArticleId;type:char(36);not null" json:"site_article_id"`
+	IsShowInText         bool       `gorm:"column:IsShowInText;type:tinyint(1);not null" json:"is_show_in_text"`
+	SiteImageId          uuid.UUID  `gorm:"column:SiteImageId;type:char(36);not null" json:"site_image_id"`
+	SiteNewsId           uuid.UUID  `gorm:"column:SiteNewsId;type:char(36);not null;index" json:"site_news_id"`
+	Title                *string    `gorm:"column:Title;type:longtext" json:"title"`
+	MediaId              *string    `gorm:"column:MediaId;type:varchar(500)" json:"media_id"`
+	CreationTime         time.Time  `gorm:"column:CreationTime;type:datetime(6);not null" json:"creation_time"`
+	CreatorId            *uuid.UUID `gorm:"column:CreatorId;type:char(36)" json:"creator_id"`
+	LastModificationTime *time.Time `gorm:"column:LastModificationTime;type:datetime(6)" json:"last_modification_time"`
+	LastModifierId       *uuid.UUID `gorm:"column:LastModifierId;type:char(36)" json:"last_modifier_id"`
+	IsDeleted            bool       `gorm:"column:IsDeleted;type:tinyint(1);not null;default:0" json:"is_deleted"`
+	DeleterId            *uuid.UUID `gorm:"column:DeleterId;type:char(36)" json:"deleter_id"`
+	DeletionTime         *time.Time `gorm:"column:DeletionTime;type:datetime(6)" json:"deletion_time"`
 
-	// Association metadata
-	DisplayOrder int    `gorm:"default:0;index" json:"display_order"`
-	IsMainStory  bool   `gorm:"default:false" json:"is_main_story"`
-	IsFeatured   bool   `gorm:"default:false" json:"is_featured"`
-	Section      string `gorm:"type:varchar(100)" json:"section"`
-	Summary      string `gorm:"type:text" json:"summary"`
+	// Compatibility fields (not in database but used by application)
+	NewsID    uuid.UUID `gorm:"-" json:"news_id"`
+	ArticleID uuid.UUID `gorm:"-" json:"article_id"`
 
-	// Publishing control
-	IsVisible   bool       `gorm:"default:true" json:"is_visible"`
-	PublishedAt *time.Time `json:"published_at"`
+	// Association metadata (not in database but used by application)
+	DisplayOrder int    `gorm:"-" json:"display_order"`
+	IsMainStory  bool   `gorm:"-" json:"is_main_story"`
+	IsFeatured   bool   `gorm:"-" json:"is_featured"`
+	Section      string `gorm:"-" json:"section"`
+	Summary      string `gorm:"-" json:"summary"`
 
-	// Audit fields
-	CreatedAt time.Time  `gorm:"index" json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	CreatedBy *uuid.UUID `gorm:"type:char(36);index" json:"created_by"`
-	UpdatedBy *uuid.UUID `gorm:"type:char(36);index" json:"updated_by"`
+	// Publishing control (not in database but used by application)
+	IsVisible   bool       `gorm:"-" json:"is_visible"`
+	PublishedAt *time.Time `gorm:"-" json:"published_at"`
+
+	// Audit fields (compatibility)
+	CreatedAt time.Time  `gorm:"-" json:"created_at"`
+	UpdatedAt time.Time  `gorm:"-" json:"updated_at"`
+	CreatedBy *uuid.UUID `gorm:"-" json:"created_by"`
+	UpdatedBy *uuid.UUID `gorm:"-" json:"updated_by"`
 
 	// Relationships
-	News    News        `gorm:"foreignKey:NewsID" json:"news,omitempty"`
-	Article SiteArticle `gorm:"foreignKey:ArticleID" json:"article,omitempty"`
+	News    News        `gorm:"foreignKey:SiteNewsId" json:"news,omitempty"`
+	Article SiteArticle `gorm:"foreignKey:SiteArticleId" json:"article,omitempty"`
 }
 
 // BeforeCreate hook for News
@@ -258,15 +286,15 @@ func (nc *NewsCategory) BeforeCreate(tx *gorm.DB) error {
 
 // BeforeCreate hook for NewsArticle
 func (na *NewsArticle) BeforeCreate(tx *gorm.DB) error {
-	if na.ID == uuid.Nil {
-		na.ID = uuid.New()
+	if na.Id == uuid.Nil {
+		na.Id = uuid.New()
 	}
 	return nil
 }
 
 // TableName returns the table name for News
 func (News) TableName() string {
-	return "news"
+	return "SiteNews"
 }
 
 // TableName returns the table name for NewsCategory
@@ -281,7 +309,7 @@ func (NewsCategoryAssociation) TableName() string {
 
 // TableName returns the table name for NewsArticle
 func (NewsArticle) TableName() string {
-	return "news_articles"
+	return "SiteNewsArticles"
 }
 
 // Helper methods for News

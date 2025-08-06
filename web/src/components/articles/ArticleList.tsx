@@ -62,8 +62,8 @@ const ArticleList: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [publishedFilter, setPublishedFilter] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [publishedFilter, setPublishedFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,8 +77,8 @@ const ArticleList: React.FC = () => {
     page: currentPage,
     pageSize,
     search: searchTerm || undefined,
-    categoryId: selectedCategory || undefined,
-    isPublished: publishedFilter === 'published' ? true : publishedFilter === 'draft' ? false : undefined,
+    categoryId: selectedCategory && selectedCategory !== 'all' ? selectedCategory : undefined,
+    isPublished: publishedFilter === 'published' ? true : publishedFilter === 'draft' ? false : publishedFilter === 'all' ? undefined : undefined,
     sortBy: sortBy as any,
     sortOrder: sortOrder as any,
     includeCategory: true,
@@ -253,7 +253,7 @@ const ArticleList: React.FC = () => {
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
                 {Array.isArray(categories) && categories.length > 0 ? (
                   categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
@@ -273,7 +273,7 @@ const ArticleList: React.FC = () => {
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
+                <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
               </SelectContent>
