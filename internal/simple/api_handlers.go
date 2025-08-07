@@ -2,6 +2,7 @@ package simple
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/skip2/go-qrcode"
 	"github.com/zenteam/nextevent-go/internal/config"
 	"github.com/zenteam/nextevent-go/internal/infrastructure"
 	"github.com/zenteam/nextevent-go/pkg/utils"
@@ -2402,4 +2404,113 @@ func (h *APIHandlers) CreateNewsWithSelectors(c *gin.Context) {
 	}
 
 	c.JSON(201, response)
+}
+
+// Article WeChat QR Code endpoints (mock implementation)
+
+// GenerateArticleQRCode generates a QR code for an article with actual QR code image
+func (h *APIHandlers) GenerateArticleQRCode(c *gin.Context) {
+	articleID := c.Param("id")
+	qrType := c.DefaultQuery("type", "permanent")
+
+	if qrType != "permanent" && qrType != "temporary" {
+		utils.ErrorResponse(c, 400, "Invalid QR code type. Must be 'permanent' or 'temporary'", nil)
+		return
+	}
+
+	// Validate article ID format
+	_, err := uuid.Parse(articleID)
+	if err != nil {
+		utils.ErrorResponse(c, 400, "Invalid article ID format", err)
+		return
+	}
+
+	// Generate mobile preview URL for the QR code
+	mobileURL := fmt.Sprintf("http://localhost:8080/api/v1/mobile/articles/%s", articleID)
+
+	// Generate QR code image from the mobile URL
+	qrImageData, err := h.generateQRCodeImage(mobileURL)
+	if err != nil {
+		utils.ErrorResponse(c, 500, "Failed to generate QR code image", err)
+		return
+	}
+
+	// Create response with actual QR code image
+	qrCodeResponse := map[string]interface{}{
+		"id":              fmt.Sprintf("qr_%s_%d", articleID, time.Now().Unix()),
+		"resourceId":      articleID,
+		"qrCodeUrl":       mobileURL,
+		"qrCodeImageData": qrImageData, // Base64 encoded QR code image
+		"sceneStr":        fmt.Sprintf("article_%s", articleID),
+		"qrCodeType":      qrType,
+		"scanCount":       0,
+		"isActive":        true,
+		"createdAt":       time.Now().Format(time.RFC3339),
+		"shareUrl":        mobileURL,
+		"expireTime": func() *string {
+			if qrType == "temporary" {
+				expiry := time.Now().Add(24 * time.Hour).Format(time.RFC3339)
+				return &expiry
+			}
+			return nil
+		}(),
+	}
+
+	utils.SuccessResponse(c, 200, "QR code generated successfully", qrCodeResponse)
+}
+
+// GetArticleQRCodes retrieves all QR codes for an article
+func (h *APIHandlers) GetArticleQRCodes(c *gin.Context) {
+	articleID := c.Param("id")
+
+	// Mock QR codes response
+	mockQRCodes := []map[string]interface{}{
+		{
+			"id":         fmt.Sprintf("qr_%s_1", articleID),
+			"qrCodeUrl":  fmt.Sprintf("https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket=mock_ticket_%s_1", articleID),
+			"scanCount":  25,
+			"isActive":   true,
+			"qrCodeType": "permanent",
+			"createdAt":  time.Now().Add(-7 * 24 * time.Hour).Format(time.RFC3339),
+		},
+	}
+
+	utils.SuccessResponse(c, 200, "QR codes retrieved successfully", mockQRCodes)
+}
+
+// GetArticleWeChatShareInfo gets comprehensive sharing information for WeChat
+func (h *APIHandlers) GetArticleWeChatShareInfo(c *gin.Context) {
+	articleID := c.Param("id")
+
+	// Mock share info response
+	shareInfo := map[string]interface{}{
+		"articleId":        articleID,
+		"optimizedContent": "<p>WeChat optimized content for article</p>",
+		"qrCodes": []map[string]interface{}{
+			{
+				"id":        fmt.Sprintf("qr_%s_1", articleID),
+				"qrCodeUrl": fmt.Sprintf("https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket=mock_ticket_%s", articleID),
+				"scanCount": 25,
+				"isActive":  true,
+			},
+		},
+		"shareUrl": fmt.Sprintf("http://localhost:8080/api/v1/mobile/articles/%s", articleID),
+	}
+
+	utils.SuccessResponse(c, 200, "WeChat share info retrieved successfully", shareInfo)
+}
+
+// generateQRCodeImage generates a QR code image from a URL and returns base64 encoded data
+func (h *APIHandlers) generateQRCodeImage(url string) (string, error) {
+	// Generate QR code as PNG bytes
+	qrBytes, err := qrcode.Encode(url, qrcode.Medium, 256)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate QR code: %w", err)
+	}
+
+	// Encode to base64
+	base64Data := base64.StdEncoding.EncodeToString(qrBytes)
+
+	// Return as data URL for direct use in HTML
+	return "data:image/png;base64," + base64Data, nil
 }

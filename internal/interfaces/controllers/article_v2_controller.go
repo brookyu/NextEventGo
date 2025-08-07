@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -289,4 +290,96 @@ func (c *ArticleV2Controller) GetArticleByPromotionCode(ctx *gin.Context) {
 	}
 
 	utils.SuccessResponse(ctx, http.StatusOK, "Article retrieved successfully", article)
+}
+
+// WeChat QR Code Endpoints
+
+// GenerateArticleQRCode handles POST /api/v2/articles/:id/wechat/qrcode
+func (c *ArticleV2Controller) GenerateArticleQRCode(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Invalid article ID", err)
+		return
+	}
+
+	// Get QR code type from query parameter
+	qrCodeType := ctx.DefaultQuery("type", "permanent")
+	if qrCodeType != "permanent" && qrCodeType != "temporary" {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Invalid QR code type. Must be 'permanent' or 'temporary'", nil)
+		return
+	}
+
+	// Generate QR code
+	qrCode, err := c.articleWeChatService.GenerateArticleQRCode(ctx.Request.Context(), id, qrCodeType)
+	if err != nil {
+		c.logger.Error("Failed to generate article QR code",
+			zap.String("articleId", id.String()),
+			zap.String("type", qrCodeType),
+			zap.Error(err))
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to generate QR code", err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "QR code generated successfully", qrCode)
+}
+
+// GetArticleQRCodes handles GET /api/v2/articles/:id/wechat/qrcodes
+func (c *ArticleV2Controller) GetArticleQRCodes(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Invalid article ID", err)
+		return
+	}
+
+	// Get QR codes
+	qrCodes, err := c.articleWeChatService.GetArticleQRCodes(ctx.Request.Context(), id)
+	if err != nil {
+		c.logger.Error("Failed to get article QR codes",
+			zap.String("articleId", id.String()),
+			zap.Error(err))
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to get QR codes", err)
+		return
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "QR codes retrieved successfully", qrCodes)
+}
+
+// GetArticleWeChatShareInfo handles GET /api/v2/articles/:id/wechat/share-info
+func (c *ArticleV2Controller) GetArticleWeChatShareInfo(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		utils.ErrorResponse(ctx, http.StatusBadRequest, "Invalid article ID", err)
+		return
+	}
+
+	// Get WeChat content
+	content, err := c.articleWeChatService.PrepareWeChatContent(ctx.Request.Context(), id)
+	if err != nil {
+		c.logger.Error("Failed to prepare WeChat content",
+			zap.String("articleId", id.String()),
+			zap.Error(err))
+		utils.ErrorResponse(ctx, http.StatusInternalServerError, "Failed to prepare WeChat content", err)
+		return
+	}
+
+	// Get QR codes
+	qrCodes, err := c.articleWeChatService.GetArticleQRCodes(ctx.Request.Context(), id)
+	if err != nil {
+		c.logger.Warn("Failed to get QR codes for share info",
+			zap.String("articleId", id.String()),
+			zap.Error(err))
+		qrCodes = nil // Return nil if QR codes fail
+	}
+
+	shareInfo := map[string]interface{}{
+		"articleId":        id.String(),
+		"optimizedContent": content,
+		"qrCodes":          qrCodes,
+		"shareUrl":         fmt.Sprintf("http://localhost:8080/api/v1/mobile/articles/%s", id.String()),
+	}
+
+	utils.SuccessResponse(ctx, http.StatusOK, "WeChat share info retrieved successfully", shareInfo)
 }

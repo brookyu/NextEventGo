@@ -132,3 +132,109 @@ export interface UserFormData {
   permissions: string[]
   sendWelcomeEmail: boolean
 }
+
+// WeChat User Types
+export interface WeChatUser {
+  id: string
+  openId: string
+  unionId?: string
+  nickname: string
+  realName?: string
+  companyName?: string
+  position?: string
+  email?: string
+  mobile?: string
+  sex: number // 0: unknown, 1: male, 2: female
+  city?: string
+  country?: string
+  province?: string
+  language?: string
+  headImgUrl?: string
+  subscribe: boolean
+  subscribeTime?: string
+  groupId?: number
+  remark?: string
+  isConfirmed?: boolean
+  allowTest?: boolean
+  isHidden?: boolean
+  currentEventId?: string
+  telephone?: string
+  workAddress?: string
+  qrCodeValue?: string
+  bizCardSavePath?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateWeChatUserRequest {
+  openId: string
+  unionId?: string
+  nickname: string
+  realName?: string
+  companyName?: string
+  position?: string
+  email?: string
+  mobile?: string
+  sex?: number
+  city?: string
+  country?: string
+  province?: string
+  language?: string
+  headImgUrl?: string
+  subscribe?: boolean
+  groupId?: number
+  remark?: string
+  telephone?: string
+  workAddress?: string
+  qrCodeValue?: string
+}
+
+export interface UpdateWeChatUserRequest {
+  nickname?: string
+  realName?: string
+  companyName?: string
+  position?: string
+  email?: string
+  mobile?: string
+  sex?: number
+  city?: string
+  country?: string
+  province?: string
+  language?: string
+  headImgUrl?: string
+  subscribe?: boolean
+  groupId?: number
+  remark?: string
+  telephone?: string
+  workAddress?: string
+  qrCodeValue?: string
+}
+
+export interface WeChatUserFilters {
+  search?: string
+  subscribe?: boolean
+  sex?: number
+  city?: string
+  province?: string
+  country?: string
+  createdAtStart?: string
+  createdAtEnd?: string
+  sortBy?: 'nickname' | 'realName' | 'companyName' | 'createdAt' | 'subscribeTime'
+  sortOrder?: 'asc' | 'desc'
+}
+
+export interface WeChatUserStatistics {
+  totalUsers: number
+  subscribedUsers: number
+  unsubscribedUsers: number
+  newUsersThisWeek: number
+  newUsersThisMonth: number
+  activeUsersToday: number
+  activeUsersWeek: number
+  maleUsers: number
+  femaleUsers: number
+  unknownSex: number
+  topCities: { city: string; count: number }[]
+  topProvinces: { province: string; count: number }[]
+  topCountries: { country: string; count: number }[]
+}

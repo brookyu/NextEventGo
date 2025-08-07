@@ -16,6 +16,7 @@ import (
 // QRCodeServiceInterface defines the interface for QR code operations
 type QRCodeServiceInterface interface {
 	GenerateArticleQRCode(ctx context.Context, articleID uuid.UUID, qrType entities.QRCodeType) (*entities.WeChatQrCode, error)
+	GenerateSurveyQRCode(ctx context.Context, surveyID uuid.UUID, qrType entities.QRCodeType) (*entities.WeChatQrCode, error)
 	TrackQRCodeScan(ctx context.Context, qrCodeID uuid.UUID, scanData *QRCodeScanData) error
 	RevokeQRCode(ctx context.Context, qrCodeID uuid.UUID) error
 }

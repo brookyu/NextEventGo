@@ -33,7 +33,7 @@ const navigation = [
   { name: 'Cloud Videos', href: '/cloud-videos', icon: PlayCircle },
   { name: 'News', href: '/news', icon: Newspaper },
   { name: 'Surveys', href: '/surveys', icon: FileQuestion },
-  { name: 'Users', href: '/users', icon: UserCog },
+  { name: 'Wechat Users', href: '/users', icon: UserCog },
   { name: 'WeChat', href: '/wechat', icon: MessageSquare },
   { name: 'Migration', href: '/migration', icon: Database },
   { name: 'Settings', href: '/settings', icon: Settings },

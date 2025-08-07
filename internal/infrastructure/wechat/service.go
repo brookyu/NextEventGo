@@ -117,6 +117,16 @@ func (s *Service) GetUserList(ctx context.Context, nextOpenID string) (*UserList
 	return s.retryableClient.GetUserList(ctx, nextOpenID)
 }
 
+// CreateQRCode creates a temporary QR code
+func (s *Service) CreateQRCode(ctx context.Context, sceneStr string, expireSeconds int) (*QRCodeCreateResponse, error) {
+	return s.retryableClient.CreateQRCode(ctx, sceneStr, expireSeconds)
+}
+
+// CreatePermanentQRCode creates a permanent QR code
+func (s *Service) CreatePermanentQRCode(ctx context.Context, sceneStr string) (*QRCodeCreateResponse, error) {
+	return s.retryableClient.CreatePermanentQRCode(ctx, sceneStr)
+}
+
 // ClearAccessTokenCache clears the cached access token
 func (s *Service) ClearAccessTokenCache(ctx context.Context) error {
 	cacheKey := s.config.AccessTokenCacheKey

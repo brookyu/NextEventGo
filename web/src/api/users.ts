@@ -1,133 +1,117 @@
 import { api } from './client'
-import type { User, CreateUserRequest, UpdateUserRequest, UserFilters, UserActivity } from '@/types/users'
+import type { WeChatUser, CreateWeChatUserRequest, UpdateWeChatUserRequest, WeChatUserFilters, WeChatUserStatistics } from '@/types/users'
 
 export const usersApi = {
-  // Get all users with pagination and filters
+  // Get all WeChat users with pagination and filters
   getUsers: (params?: {
     offset?: number
     limit?: number
     search?: string
-    role?: string
-    status?: string
+    subscribe?: boolean
+    sex?: number
+    city?: string
+    province?: string
+    country?: string
     sortBy?: string
     sortOrder?: 'asc' | 'desc'
+    createdAtStart?: string
+    createdAtEnd?: string
   }) => {
     return api.get<{
-      users: User[]
+      users: WeChatUser[]
       pagination: {
         offset: number
         limit: number
         count: number
         total: number
       }
-    }>('/users', { params })
+    }>('/users/', { params })
   },
 
-  // Get user by ID
-  getUser: (id: string) => {
-    return api.get<User>(`/users/${id}`)
+  // Get WeChat user by OpenID
+  getUser: (openId: string) => {
+    return api.get<WeChatUser>(`/users/${openId}`)
   },
 
-  // Create new user
-  createUser: (data: CreateUserRequest) => {
-    return api.post<User>('/users', data)
+  // Create new WeChat user
+  createUser: (data: CreateWeChatUserRequest) => {
+    return api.post<WeChatUser>('/users/', data)
   },
 
-  // Update user
-  updateUser: (id: string, data: UpdateUserRequest) => {
-    return api.put<User>(`/users/${id}`, data)
+  // Update WeChat user
+  updateUser: (openId: string, data: UpdateWeChatUserRequest) => {
+    return api.put<WeChatUser>(`/users/${openId}`, data)
   },
 
-  // Delete user
-  deleteUser: (id: string) => {
-    return api.delete(`/users/${id}`)
+  // Delete WeChat user
+  deleteUser: (openId: string) => {
+    return api.delete(`/users/${openId}`)
   },
 
-  // Update user status
-  updateUserStatus: (id: string, status: 'active' | 'inactive' | 'suspended') => {
-    return api.patch(`/users/${id}/status`, { status })
+  // Update WeChat user subscription status
+  updateUserSubscription: (openId: string, subscribe: boolean) => {
+    return api.patch(`/users/${openId}`, { subscribe })
   },
 
-  // Reset user password
-  resetUserPassword: (id: string) => {
-    return api.post(`/users/${id}/reset-password`)
-  },
-
-  // Get user activity
-  getUserActivity: (id: string, params?: {
-    offset?: number
-    limit?: number
-    dateRange?: { start: string; end: string }
-  }) => {
-    return api.get<{
-      activities: UserActivity[]
-      pagination: {
-        offset: number
-        limit: number
-        count: number
-        total: number
-      }
-    }>(`/users/${id}/activity`, { params })
-  },
-
-  // Get user statistics
+  // Get WeChat user statistics
   getUserStatistics: () => {
-    return api.get<{
-      totalUsers: number
-      activeUsers: number
-      newUsersToday: number
-      newUsersThisWeek: number
-      usersByRole: { role: string; count: number }[]
-      usersByStatus: { status: string; count: number }[]
-      activityTrend: { date: string; count: number }[]
-    }>('/users/statistics')
+    return api.get<WeChatUserStatistics>('/users/statistics')
   },
 
-  // Bulk operations
-  bulkUpdateUsers: (userIds: string[], updates: Partial<UpdateUserRequest>) => {
-    return api.post('/users/bulk-update', { userIds, updates })
+  // Bulk operations for WeChat users
+  bulkUpdateSubscription: (openIds: string[], subscribe: boolean) => {
+    return api.post('/users/bulk-update-subscription', { openIds, subscribe })
   },
 
-  bulkDeleteUsers: (userIds: string[]) => {
-    return api.post('/users/bulk-delete', { userIds })
+  bulkDeleteUsers: (openIds: string[]) => {
+    return api.post('/users/bulk-delete', { openIds })
   },
 
-  // Export users
+  // Export WeChat users
   exportUsers: (params?: {
     format?: 'csv' | 'xlsx' | 'pdf'
-    userIds?: string[]
-    filters?: UserFilters
+    openIds?: string[]
+    filters?: WeChatUserFilters
   }) => {
     return api.post('/users/export', params, {
       responseType: 'blob'
     })
   },
 
-  // Role management
-  getRoles: () => {
+  // Search operations
+  searchByNickname: (nickname: string, params?: { offset?: number; limit?: number }) => {
     return api.get<{
-      id: string
-      name: string
-      description: string
-      permissions: string[]
-    }[]>('/roles')
+      users: WeChatUser[]
+      pagination: {
+        offset: number
+        limit: number
+        count: number
+        total: number
+      }
+    }>('/users/search/nickname', { params: { ...params, nickname } })
   },
 
-  updateUserRoles: (userId: string, roleIds: string[]) => {
-    return api.put(`/users/${userId}/roles`, { roleIds })
-  },
-
-  // Permission management
-  getPermissions: () => {
+  searchByRealName: (realName: string, params?: { offset?: number; limit?: number }) => {
     return api.get<{
-      id: string
-      name: string
-      description: string
-      category: string
-    }[]>('/permissions')
+      users: WeChatUser[]
+      pagination: {
+        offset: number
+        limit: number
+        count: number
+        total: number
+      }
+    }>('/users/search/realname', { params: { ...params, realName } })
   },
 
-  getUserPermissions: (userId: string) => {
-    return api.get<string[]>(`/users/${userId}/permissions`)
+  searchByCompany: (company: string, params?: { offset?: number; limit?: number }) => {
+    return api.get<{
+      users: WeChatUser[]
+      pagination: {
+        offset: number
+        limit: number
+        count: number
+        total: number
+      }
+    }>('/users/search/company', { params: { ...params, company } })
   },
 }

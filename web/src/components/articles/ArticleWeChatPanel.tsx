@@ -17,10 +17,10 @@ import {
   BarChart3
 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '../ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { Badge } from '../ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -28,21 +28,21 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
+} from '../ui/dialog'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
-import { Progress } from '@/components/ui/progress'
-import { Skeleton } from '@/components/ui/skeleton'
+} from '../ui/select'
+import { Separator } from '../ui/separator'
+import { Progress } from '../ui/progress'
+import { Skeleton } from '../ui/skeleton'
 
-import { Article, WeChatQRCode, WeChatContentResponse } from '@/types/article'
-import { articleApi } from '@/services/articleApi'
-import { formatDate, formatNumber } from '@/lib/utils'
+import { Article, WeChatQRCode, WeChatContentResponse } from '../../types/article'
+import { articleApi } from '../../services/articleApi'
+import { formatDate, formatNumber } from '../../lib/utils'
 
 interface ArticleWeChatPanelProps {
   article: Article

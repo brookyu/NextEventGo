@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { api } from '@/api/client'
 
 interface User {
   id: string
@@ -16,6 +17,7 @@ interface AuthState {
   login: (username: string, password: string) => Promise<void>
   logout: () => void
   clearError: () => void
+  initialize: () => void
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,7 +33,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
 
         try {
-          const apiUrl = import.meta.env.VITE_API_URL || '/api/v1'
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
           const response = await fetch(`${apiUrl}/auth/login`, {
             method: 'POST',
             headers: {
@@ -46,6 +48,9 @@ export const useAuthStore = create<AuthState>()(
           }
 
           const data = await response.json()
+
+          // Set token in API client
+          api.setToken(data.token)
 
           set({
             user: data.user,
@@ -64,6 +69,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        // Clear token from API client
+        api.clearToken()
+
         set({
           user: null,
           token: null,
@@ -75,6 +83,22 @@ export const useAuthStore = create<AuthState>()(
 
       clearError: () => {
         set({ error: null })
+      },
+
+      initialize: () => {
+        // Set token in API client if it exists in storage
+        const authStorage = localStorage.getItem('auth-storage')
+        if (authStorage) {
+          try {
+            const authData = JSON.parse(authStorage)
+            const token = authData.state?.token
+            if (token) {
+              api.setToken(token)
+            }
+          } catch (e) {
+            console.warn('Failed to parse auth storage during initialization:', e)
+          }
+        }
       },
     }),
     {

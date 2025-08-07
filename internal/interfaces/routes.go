@@ -25,6 +25,7 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	surveyRepo := repositories.NewGormSurveyRepository(infra.DB)
 	videoRepo := repositories.NewGormVideoRepository(infra.DB)
 	categoryRepo := repositories.NewGormArticleCategoryRepository(infra.DB)
+	wechatUserRepo := repositories.NewGormWeChatUserRepository(infra.DB)
 
 	// Initialize services
 	eventService := infraServices.NewEventService(eventRepo, userRepo, attendeeRepo, infra.Logger, infra.DB)
@@ -41,6 +42,7 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	// Initialize controllers
 	authController := controllers.NewAuthController(infra.Config, infra.Logger)
 	// wechatController := controllers.NewWeChatController(wechatService, infra.Logger)
+	wechatUsersController := controllers.NewWeChatUsersController(wechatUserRepo, infra.Logger)
 	eventController := controllers.NewEventController(eventService, nil, nil, infra.Logger)
 	siteEventController := controllers.NewSiteEventController(siteEventService, infra.Logger)
 	simpleAttendeeController := controllers.NewSimpleAttendeeController(infra.DB, infra.Logger)
@@ -50,6 +52,9 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 	// Initialize survey service and controller
 	surveyService := services.NewSurveyService(infra.DB)
 	surveyController := controllers.NewSurveyController(surveyService, infra.Logger)
+
+	// Initialize mobile controller
+	mobileController := controllers.NewMobileController(surveyService, infra.Logger)
 
 	// Health check endpoint
 	router.GET("/health", func(c *gin.Context) {
@@ -79,6 +84,11 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 		api.POST("/articles", apiHandlers.CreateArticle)
 		api.PUT("/articles/:id", apiHandlers.UpdateArticle)
 		api.DELETE("/articles/:id", apiHandlers.DeleteArticle)
+
+		// Article WeChat endpoints (mock implementation)
+		api.POST("/articles/:id/wechat/qrcode", apiHandlers.GenerateArticleQRCode)
+		api.GET("/articles/:id/wechat/qrcodes", apiHandlers.GetArticleQRCodes)
+		api.GET("/articles/:id/wechat/share-info", apiHandlers.GetArticleWeChatShareInfo)
 
 		// Categories endpoint
 		api.GET("/categories", apiHandlers.GetCategories)
@@ -276,20 +286,47 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 			events.GET("/:id/attendees", simpleAttendeeController.GetEventAttendees)
 		}
 
+		// Site Events endpoints (protected) - v1 compatibility
+		siteEvents := v1.Group("/site-events")
+		siteEvents.Use(middleware.AuthMiddleware(infra.Config, infra.Logger))
+		{
+			siteEvents.GET("/", siteEventController.GetSiteEvents)
+			siteEvents.GET("/current", siteEventController.GetCurrentEvent)
+			siteEvents.GET("/:id", siteEventController.GetSiteEvent)
+			siteEvents.GET("/:id/for-editing", siteEventController.GetSiteEventForEditing)
+			siteEvents.POST("/", siteEventController.CreateSiteEvent)
+			siteEvents.PUT("/:id", siteEventController.UpdateSiteEvent)
+			siteEvents.DELETE("/:id", siteEventController.DeleteSiteEvent)
+			siteEvents.POST("/:id/toggle-current", siteEventController.ToggleCurrentEvent)
+		}
+
+		// Add direct routes without trailing slash to avoid redirects
+		v1SiteEventsAuth := v1.Group("")
+		v1SiteEventsAuth.Use(middleware.AuthMiddleware(infra.Config, infra.Logger))
+		{
+			v1SiteEventsAuth.GET("/site-events", siteEventController.GetSiteEvents)
+		}
+
 		// Survey management endpoints (protected)
 		surveys := v1.Group("/surveys")
 		surveys.Use(middleware.AuthMiddleware(infra.Config, infra.Logger))
 		{
 			surveys.GET("/", surveyController.GetSurveyList)
 			surveys.POST("/", surveyController.CreateSurvey)
-			surveys.GET("/:id", surveyController.GetSurvey)
-			surveys.PUT("/:id", surveyController.UpdateSurvey)
-			surveys.DELETE("/:id", surveyController.DeleteSurvey)
-			surveys.GET("/:id/questions", surveyController.GetSurveyWithQuestions)
+			surveys.GET("/:surveyId", surveyController.GetSurvey)
+			surveys.PUT("/:surveyId", surveyController.UpdateSurvey)
+			surveys.DELETE("/:surveyId", surveyController.DeleteSurvey)
+			surveys.GET("/:surveyId/questions", surveyController.GetSurveyWithQuestions)
 
 			// Question management for surveys
 			surveys.POST("/:surveyId/questions", surveyController.CreateQuestion)
 			surveys.POST("/:surveyId/questions/reorder", surveyController.UpdateQuestionOrder)
+
+			// WeChat QR code endpoints for surveys
+			surveys.POST("/:surveyId/wechat/qrcode", surveyController.GenerateSurveyQRCode)
+			surveys.GET("/:surveyId/wechat/qrcodes", surveyController.GetSurveyQRCodes)
+			surveys.GET("/:surveyId/wechat/share-info", surveyController.GetSurveyWeChatShareInfo)
+			surveys.POST("/wechat/qrcodes/:qrCodeId/revoke", surveyController.RevokeSurveyQRCode)
 		}
 
 		// Question management endpoints (protected)
@@ -307,6 +344,14 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 			publicSurveys.GET("/:id", surveyController.GetPublicSurvey)
 		}
 
+		// Mobile preview endpoints (no authentication required)
+		mobile := v1.Group("/mobile")
+		{
+			mobile.GET("/articles/:id", mobileController.GetArticlePreview)
+			mobile.GET("/surveys/:id", mobileController.GetSurveyPreview)
+			mobile.GET("/surveys/:id/participate", mobileController.GetSurveyParticipate)
+		}
+
 		// Attendee management endpoints (protected) - Temporarily disabled
 		// attendees := v1.Group("/attendees")
 		// attendees.Use(middleware.AuthMiddleware(infra.Config, infra.Logger))
@@ -320,14 +365,16 @@ func SetupRoutes(router *gin.Engine, infra *infrastructure.Infrastructure) {
 		//	attendees.POST("/:id/cancel", attendeeController.CancelRegistration)
 		// }
 
-		// User management endpoints (placeholder)
+		// WeChat Users management endpoints (protected)
 		users := v1.Group("/users")
+		users.Use(middleware.AuthMiddleware(infra.Config, infra.Logger))
 		{
-			users.GET("/", func(c *gin.Context) {
-				c.JSON(http.StatusOK, gin.H{
-					"message": "Users endpoint - coming soon",
-				})
-			})
+			users.GET("/", wechatUsersController.GetWeChatUsers)
+			users.POST("/", wechatUsersController.CreateWeChatUser)
+			users.GET("/statistics", wechatUsersController.GetWeChatUserStatistics)
+			users.GET("/:openId", wechatUsersController.GetWeChatUser)
+			users.PUT("/:openId", wechatUsersController.UpdateWeChatUser)
+			users.DELETE("/:openId", wechatUsersController.DeleteWeChatUser)
 		}
 
 		// Image management endpoints (commented out due to missing controllers)

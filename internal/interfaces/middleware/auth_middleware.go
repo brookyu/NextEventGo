@@ -24,6 +24,9 @@ func AuthMiddleware(config *config.Config, logger *zap.Logger) gin.HandlerFunc {
 		// Get token from Authorization header
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
+			// Ensure CORS headers are preserved in error response
+			c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+			c.Header("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
 			c.Abort()
 			return
@@ -31,6 +34,9 @@ func AuthMiddleware(config *config.Config, logger *zap.Logger) gin.HandlerFunc {
 
 		// Check if header starts with "Bearer "
 		if !strings.HasPrefix(authHeader, "Bearer ") {
+			// Ensure CORS headers are preserved in error response
+			c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+			c.Header("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization header format"})
 			c.Abort()
 			return
@@ -50,6 +56,9 @@ func AuthMiddleware(config *config.Config, logger *zap.Logger) gin.HandlerFunc {
 
 		if err != nil {
 			logger.Warn("Invalid JWT token", zap.Error(err))
+			// Ensure CORS headers are preserved in error response
+			c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+			c.Header("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
@@ -61,14 +70,17 @@ func AuthMiddleware(config *config.Config, logger *zap.Logger) gin.HandlerFunc {
 			c.Set("user_id", claims.UserID)
 			c.Set("username", claims.Username)
 			c.Set("user_role", claims.Role)
-			
-			logger.Debug("User authenticated", 
+
+			logger.Debug("User authenticated",
 				zap.String("user_id", claims.UserID),
 				zap.String("username", claims.Username),
 				zap.String("role", claims.Role))
-			
+
 			c.Next()
 		} else {
+			// Ensure CORS headers are preserved in error response
+			c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+			c.Header("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			c.Abort()
 			return
@@ -117,12 +129,18 @@ func RequireRole(requiredRole string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("user_role")
 		if !exists {
+			// Ensure CORS headers are preserved in error response
+			c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+			c.Header("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 			c.Abort()
 			return
 		}
 
 		if userRole.(string) != requiredRole && userRole.(string) != "admin" {
+			// Ensure CORS headers are preserved in error response
+			c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+			c.Header("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 			c.Abort()
 			return
@@ -137,6 +155,9 @@ func RequirePermission(permission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userRole, exists := c.Get("user_role")
 		if !exists {
+			// Ensure CORS headers are preserved in error response
+			c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+			c.Header("Access-Control-Allow-Credentials", "true")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 			c.Abort()
 			return
@@ -153,12 +174,18 @@ func RequirePermission(permission string) gin.HandlerFunc {
 		switch permission {
 		case "events:write", "events:delete":
 			if userRole.(string) != "manager" && userRole.(string) != "admin" {
+				// Ensure CORS headers are preserved in error response
+				c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+				c.Header("Access-Control-Allow-Credentials", "true")
 				c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 				c.Abort()
 				return
 			}
 		case "settings:write":
 			if userRole.(string) != "admin" {
+				// Ensure CORS headers are preserved in error response
+				c.Header("Access-Control-Allow-Origin", c.GetHeader("Origin"))
+				c.Header("Access-Control-Allow-Credentials", "true")
 				c.JSON(http.StatusForbidden, gin.H{"error": "Insufficient permissions"})
 				c.Abort()
 				return

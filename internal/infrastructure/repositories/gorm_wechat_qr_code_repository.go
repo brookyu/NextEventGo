@@ -53,7 +53,7 @@ func (r *GormWeChatQrCodeRepository) GetAll(ctx context.Context, offset, limit i
 func (r *GormWeChatQrCodeRepository) GetByResource(ctx context.Context, resourceId uuid.UUID, resourceType string) ([]*entities.WeChatQrCode, error) {
 	var qrCodes []*entities.WeChatQrCode
 	err := r.db.WithContext(ctx).
-		Where("resource_id = ? AND resource_type = ? AND is_deleted = ?", resourceId, resourceType, false).
+		Where("ParamsValue = ? AND ParamKey = ? AND IsDeleted = ?", resourceId.String(), resourceType, false).
 		Order("CreationTime DESC").
 		Find(&qrCodes).Error
 	return qrCodes, err
@@ -63,8 +63,8 @@ func (r *GormWeChatQrCodeRepository) GetByResource(ctx context.Context, resource
 func (r *GormWeChatQrCodeRepository) GetActiveByResource(ctx context.Context, resourceId uuid.UUID, resourceType string) (*entities.WeChatQrCode, error) {
 	var qrCode entities.WeChatQrCode
 	err := r.db.WithContext(ctx).
-		Where("resource_id = ? AND resource_type = ? AND is_active = ? AND status = ? AND is_deleted = ?", 
-			resourceId, resourceType, true, entities.QRCodeStatusActive, false).
+		Where("ParamsValue = ? AND ParamKey = ? AND IsDeleted = ?",
+			resourceId.String(), resourceType, false).
 		First(&qrCode).Error
 	if err != nil {
 		return nil, err
@@ -124,9 +124,9 @@ func (r *GormWeChatQrCodeRepository) GetExpired(ctx context.Context, offset, lim
 func (r *GormWeChatQrCodeRepository) GetExpiring(ctx context.Context, within time.Duration) ([]*entities.WeChatQrCode, error) {
 	var qrCodes []*entities.WeChatQrCode
 	expireTime := time.Now().Add(within)
-	
+
 	err := r.db.WithContext(ctx).
-		Where("expire_time IS NOT NULL AND expire_time <= ? AND status = ? AND is_deleted = ?", 
+		Where("expire_time IS NOT NULL AND expire_time <= ? AND status = ? AND is_deleted = ?",
 			expireTime, entities.QRCodeStatusActive, false).
 		Order("expire_time ASC").
 		Find(&qrCodes).Error
@@ -144,8 +144,8 @@ func (r *GormWeChatQrCodeRepository) Delete(ctx context.Context, id uuid.UUID) e
 		Model(&entities.WeChatQrCode{}).
 		Where("id = ?", id).
 		Updates(map[string]interface{}{
-			"is_deleted":     true,
-			"deletion_time":  gorm.Expr("NOW()"),
+			"is_deleted":    true,
+			"deletion_time": gorm.Expr("NOW()"),
 		}).Error
 }
 
@@ -196,12 +196,12 @@ func (r *GormWeChatQrCodeRepository) GetMostScanned(ctx context.Context, limit i
 		Where("is_deleted = ?", false).
 		Order("scan_count DESC").
 		Limit(limit)
-	
+
 	if days > 0 {
 		since := time.Now().AddDate(0, 0, -days)
 		query = query.Where("CreationTime >= ?", since)
 	}
-	
+
 	err := query.Find(&qrCodes).Error
 	return qrCodes, err
 }
@@ -232,8 +232,8 @@ func (r *GormWeChatQrCodeRepository) UpdateScanCount(ctx context.Context, qrCode
 		Model(&entities.WeChatQrCode{}).
 		Where("id = ?", qrCodeId).
 		Updates(map[string]interface{}{
-			"scan_count":      gorm.Expr("scan_count + 1"),
-			"last_scan_time":  &now,
+			"scan_count":     gorm.Expr("scan_count + 1"),
+			"last_scan_time": &now,
 		}).Error
 }
 
@@ -243,10 +243,10 @@ func (r *GormWeChatQrCodeRepository) GetQRCodeStats(ctx context.Context, qrCodeI
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &repositories.QRCodeStats{
 		QRCode:     qrCode,
-		TotalScans: qrCode.ScanCount,
+		TotalScans: 0, // Scan count not tracked in current table structure
 		// Other fields would be populated with more complex queries
 	}, nil
 }
@@ -256,18 +256,18 @@ func (r *GormWeChatQrCodeRepository) GetResourceQRStats(ctx context.Context, res
 	if err != nil {
 		return nil, err
 	}
-	
+
 	totalQRCodes := int64(len(qrCodes))
 	var activeQRCodes int64
 	var totalScans int64
-	
+
 	for _, qr := range qrCodes {
 		if qr.IsUsable() {
 			activeQRCodes++
 		}
-		totalScans += qr.ScanCount
+		// totalScans += qr.ScanCount // Scan count not tracked in current table structure
 	}
-	
+
 	return &repositories.ResourceQRStats{
 		ResourceId:    resourceId,
 		ResourceType:  resourceType,

@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useAuthStore } from './store/authStore'
 
 // Layout components
@@ -14,6 +15,9 @@ import SiteEventDetailPage from './pages/events/SiteEventDetailPage'
 import SiteEventFormPage from './pages/events/SiteEventFormPage'
 import ArticlesPage from './pages/articles/ArticlesPage'
 import MobileArticleViewer from './components/articles/MobileArticleViewer'
+import MobileArticlePreview from './pages/mobile/MobileArticlePreview'
+import MobileSurveyPreview from './pages/mobile/MobileSurveyPreview'
+import MobileSurveyParticipate from './pages/mobile/MobileSurveyParticipate'
 import CreateUpdateArticle from './components/articles/CreateUpdateArticle'
 import ImagesPage from './pages/images/ImagesPage'
 import VideosPage from './pages/videos/VideosPage'
@@ -31,7 +35,17 @@ import SettingsPage from './pages/settings/SettingsPage'
 import Test135Editor from './components/articles/Test135Editor'
 
 function App() {
-  const { isAuthenticated, isLoading } = useAuthStore()
+  const { isAuthenticated, isLoading, initialize, token } = useAuthStore()
+
+  // Initialize auth store on app start
+  useEffect(() => {
+    initialize()
+  }, [initialize])
+
+  // Debug: Log authentication state
+  useEffect(() => {
+    console.log('Auth state:', { isAuthenticated, token: token ? 'present' : 'missing' })
+  }, [isAuthenticated, token])
 
   if (isLoading) {
     return (
@@ -79,6 +93,11 @@ function App() {
           <Route path="/surveys/test" element={<DashboardLayout><SurveyTestPage /></DashboardLayout>} />
           <Route path="/surveys/:surveyId/builder" element={<DashboardLayout><SurveyBuilderPage /></DashboardLayout>} />
           <Route path="/attendees" element={<DashboardLayout><AttendeesPage /></DashboardLayout>} />
+
+          {/* Mobile Preview Routes (no dashboard layout) */}
+          <Route path="/mobile/articles/:id" element={<MobileArticlePreview showQRInfo={true} />} />
+          <Route path="/mobile/surveys/:id" element={<MobileSurveyPreview showQRInfo={true} />} />
+          <Route path="/mobile/surveys/:id/participate" element={<MobileSurveyParticipate />} />
 
           {/* User Management */}
           <Route path="/users" element={<DashboardLayout><UsersPage /></DashboardLayout>} />

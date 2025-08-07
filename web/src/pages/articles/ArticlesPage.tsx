@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Calendar, User, Search, Filter, Plus, Download, Eye, Edit, Trash2, MoreVertical, Tag } from 'lucide-react'
+import { FileText, Calendar, User, Search, Filter, Plus, Download, Eye, Edit, Trash2, MoreVertical, Tag, QrCode } from 'lucide-react'
+import ArticleQRModal from '../../components/articles/ArticleQRModal'
 
 interface Article {
   id: string
@@ -26,6 +27,8 @@ export default function ArticlesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalArticles, setTotalArticles] = useState(0)
   const [pageSize] = useState(20)
+  const [selectedArticleForQR, setSelectedArticleForQR] = useState<Article | null>(null)
+  const [showQRModal, setShowQRModal] = useState(false)
 
   useEffect(() => {
     fetchArticles()
@@ -279,6 +282,16 @@ export default function ArticlesPage() {
                         <Eye className="w-5 h-5" />
                       </button>
                       <button
+                        onClick={() => {
+                          setSelectedArticleForQR(article)
+                          setShowQRModal(true)
+                        }}
+                        className="text-gray-400 hover:text-purple-600"
+                        title="生成二维码"
+                      >
+                        <QrCode className="w-5 h-5" />
+                      </button>
+                      <button
                         onClick={() => navigate(`/articles/${article.id}/edit`)}
                         className="text-gray-400 hover:text-green-600"
                         title="编辑文章"
@@ -299,6 +312,18 @@ export default function ArticlesPage() {
             ))}
           </ul>
         </div>
+      )}
+
+      {/* QR Code Modal */}
+      {selectedArticleForQR && (
+        <ArticleQRModal
+          article={selectedArticleForQR}
+          isOpen={showQRModal}
+          onClose={() => {
+            setShowQRModal(false)
+            setSelectedArticleForQR(null)
+          }}
+        />
       )}
     </div>
   )

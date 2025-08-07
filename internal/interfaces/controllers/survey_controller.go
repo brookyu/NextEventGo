@@ -84,9 +84,9 @@ func (c *SurveyController) GetSurveyList(ctx *gin.Context) {
 	})
 }
 
-// GetSurvey handles GET /api/v1/surveys/:id
+// GetSurvey handles GET /api/v1/surveys/:surveyId
 func (c *SurveyController) GetSurvey(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+	idStr := ctx.Param("surveyId")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -119,9 +119,9 @@ func (c *SurveyController) GetSurvey(ctx *gin.Context) {
 	})
 }
 
-// GetSurveyWithQuestions handles GET /api/v1/surveys/:id/questions
+// GetSurveyWithQuestions handles GET /api/v1/surveys/:surveyId/questions
 func (c *SurveyController) GetSurveyWithQuestions(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+	idStr := ctx.Param("surveyId")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -181,9 +181,9 @@ func (c *SurveyController) CreateSurvey(ctx *gin.Context) {
 	})
 }
 
-// UpdateSurvey handles PUT /api/v1/surveys/:id
+// UpdateSurvey handles PUT /api/v1/surveys/:surveyId
 func (c *SurveyController) UpdateSurvey(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+	idStr := ctx.Param("surveyId")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -226,9 +226,9 @@ func (c *SurveyController) UpdateSurvey(ctx *gin.Context) {
 	})
 }
 
-// DeleteSurvey handles DELETE /api/v1/surveys/:id
+// DeleteSurvey handles DELETE /api/v1/surveys/:surveyId
 func (c *SurveyController) DeleteSurvey(ctx *gin.Context) {
-	idStr := ctx.Param("id")
+	idStr := ctx.Param("surveyId")
 	id, err := uuid.Parse(idStr)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -537,5 +537,106 @@ func (c *SurveyController) UpdateQuestionOrder(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    response,
+	})
+}
+
+// WeChat QR Code Endpoints
+
+// GenerateSurveyQRCode handles POST /api/v1/surveys/:surveyId/wechat/qrcode
+func (c *SurveyController) GenerateSurveyQRCode(ctx *gin.Context) {
+	idStr := ctx.Param("surveyId")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid survey ID",
+		})
+		return
+	}
+
+	// Get QR code type from query parameter
+	qrCodeType := ctx.DefaultQuery("type", "permanent")
+	if qrCodeType != "permanent" && qrCodeType != "temporary" {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid QR code type. Must be 'permanent' or 'temporary'",
+		})
+		return
+	}
+
+	// TODO: Implement survey WeChat service integration
+	// For now, return a placeholder response
+	ctx.JSON(http.StatusNotImplemented, gin.H{
+		"success":  false,
+		"error":    "Survey WeChat QR code generation not yet implemented",
+		"message":  "This feature requires WeChat service integration",
+		"surveyId": id.String(),
+		"qrType":   qrCodeType,
+	})
+}
+
+// GetSurveyQRCodes handles GET /api/v1/surveys/:surveyId/wechat/qrcodes
+func (c *SurveyController) GetSurveyQRCodes(ctx *gin.Context) {
+	idStr := ctx.Param("surveyId")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid survey ID",
+		})
+		return
+	}
+
+	// TODO: Implement survey WeChat service integration
+	// For now, return a placeholder response
+	ctx.JSON(http.StatusNotImplemented, gin.H{
+		"success":  false,
+		"error":    "Survey WeChat QR codes retrieval not yet implemented",
+		"message":  "This feature requires WeChat service integration",
+		"surveyId": id.String(),
+	})
+}
+
+// RevokeSurveyQRCode handles POST /api/v1/surveys/wechat/qrcodes/:qrCodeId/revoke
+func (c *SurveyController) RevokeSurveyQRCode(ctx *gin.Context) {
+	qrCodeIdStr := ctx.Param("qrCodeId")
+	qrCodeId, err := uuid.Parse(qrCodeIdStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid QR code ID",
+		})
+		return
+	}
+
+	// TODO: Implement survey WeChat service integration
+	// For now, return a placeholder response
+	ctx.JSON(http.StatusNotImplemented, gin.H{
+		"success":  false,
+		"error":    "Survey WeChat QR code revocation not yet implemented",
+		"message":  "This feature requires WeChat service integration",
+		"qrCodeId": qrCodeId.String(),
+	})
+}
+
+// GetSurveyWeChatShareInfo handles GET /api/v1/surveys/:surveyId/wechat/share-info
+func (c *SurveyController) GetSurveyWeChatShareInfo(ctx *gin.Context) {
+	idStr := ctx.Param("surveyId")
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid survey ID",
+		})
+		return
+	}
+
+	// TODO: Implement survey WeChat service integration
+	// For now, return a placeholder response
+	ctx.JSON(http.StatusNotImplemented, gin.H{
+		"success":  false,
+		"error":    "Survey WeChat share info not yet implemented",
+		"message":  "This feature requires WeChat service integration",
+		"surveyId": id.String(),
 	})
 }

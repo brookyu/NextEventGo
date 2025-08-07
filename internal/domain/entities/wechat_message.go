@@ -50,50 +50,50 @@ func (w *WeChatMessage) BeforeUpdate(tx *gorm.DB) error {
 
 // WeChatUser represents WeChat user information
 type WeChatUser struct {
-	ID               uuid.UUID `gorm:"type:char(36);primaryKey;column:Id" json:"id"`
-	OpenID           string    `gorm:"type:longtext;column:OpenId" json:"open_id"`
-	Subscribe        bool      `gorm:"type:tinyint(1);column:Subscribe" json:"subscribe"`
-	NickName         string    `gorm:"type:longtext;column:NickName" json:"nickname"`
-	RealName         string    `gorm:"type:longtext;column:RealName" json:"real_name"`
-	CompanyName      string    `gorm:"type:longtext;column:CompanyName" json:"company_name"`
-	Position         string    `gorm:"type:longtext;column:Position" json:"position"`
-	Email            string    `gorm:"type:longtext;column:Email" json:"email"`
-	Mobile           string    `gorm:"type:longtext;column:Mobile" json:"mobile"`
-	Sex              int       `gorm:"column:Sex" json:"sex"`
-	City             string    `gorm:"type:longtext;column:City" json:"city"`
-	Country          string    `gorm:"type:longtext;column:Country" json:"country"`
-	Province         string    `gorm:"type:longtext;column:Province" json:"province"`
-	Language         string    `gorm:"type:longtext;column:Language" json:"language"`
-	HeadImgUrl       string    `gorm:"type:longtext;column:HeadImgUrl" json:"head_img_url"`
-	SubscribeTime    time.Time `gorm:"type:datetime(6);column:SubscribeTime" json:"subscribe_time"`
-	UnionID          string    `gorm:"type:longtext;column:UnionId" json:"union_id"`
-	Remark           string    `gorm:"type:longtext;column:Remark" json:"remark"`
-	IsConfirmed      bool      `gorm:"type:tinyint(1);column:IsConfirmed" json:"is_confirmed"`
-	GroupID          *int      `gorm:"column:GroupId" json:"group_id,omitempty"`
-	AllowTest        bool      `gorm:"type:tinyint(1);column:AllowTest" json:"allow_test"`
-	IsHidden         bool      `gorm:"type:tinyint(1);column:IsHidden" json:"is_hidden"`
-	CurrentEventID   uuid.UUID `gorm:"type:char(36);column:CurrentEventId" json:"current_event_id"`
-	R1               string    `gorm:"type:longtext;column:R1" json:"r1"`
-	R2               string    `gorm:"type:longtext;column:R2" json:"r2"`
-	R3               string    `gorm:"type:longtext;column:R3" json:"r3"`
-	R4               string    `gorm:"type:longtext;column:R4" json:"r4"`
-	R5               string    `gorm:"type:longtext;column:R5" json:"r5"`
-	R6               string    `gorm:"type:longtext;column:R6" json:"r6"`
-	R7               string    `gorm:"type:longtext;column:R7" json:"r7"`
-	R8               string    `gorm:"type:longtext;column:R8" json:"r8"`
-	R9               string    `gorm:"type:longtext;column:R9" json:"r9"`
-	R10              string    `gorm:"type:longtext;column:R10" json:"r10"`
-	PartyNumber      string    `gorm:"type:longtext;column:PartyNumber" json:"party_number"`
-	IsBizCardEnabled bool      `gorm:"type:tinyint(1);column:IsBizCardEnabled;default:0" json:"is_biz_card_enabled"`
-	Telephone        string    `gorm:"type:longtext;column:Telephone" json:"telephone"`
-	WorkAddress      string    `gorm:"type:longtext;column:WorkAddress" json:"work_address"`
-	QrCodeValue      string    `gorm:"type:longtext;column:QrCodeValue" json:"qr_code_value"`
-	BizCardSavePath  string    `gorm:"type:longtext;column:BizCardSavePath" json:"biz_card_save_path"`
+	ID               uuid.UUID  `gorm:"type:char(36);primaryKey;column:Id" json:"id"`
+	OpenID           string     `gorm:"type:longtext;column:OpenId" json:"openId"`
+	Subscribe        bool       `gorm:"type:tinyint(1);column:Subscribe" json:"subscribe"`
+	NickName         string     `gorm:"type:longtext;column:NickName" json:"nickname"`
+	RealName         *string    `gorm:"type:longtext;column:RealName" json:"realName,omitempty"`
+	CompanyName      *string    `gorm:"type:longtext;column:CompanyName" json:"companyName,omitempty"`
+	Position         *string    `gorm:"type:longtext;column:Position" json:"position,omitempty"`
+	Email            *string    `gorm:"type:longtext;column:Email" json:"email,omitempty"`
+	Mobile           *string    `gorm:"type:longtext;column:Mobile" json:"mobile,omitempty"`
+	Sex              int        `gorm:"column:Sex" json:"sex"`
+	City             *string    `gorm:"type:longtext;column:City" json:"city,omitempty"`
+	Country          *string    `gorm:"type:longtext;column:Country" json:"country,omitempty"`
+	Province         *string    `gorm:"type:longtext;column:Province" json:"province,omitempty"`
+	Language         *string    `gorm:"type:longtext;column:Language" json:"language,omitempty"`
+	HeadImgUrl       *string    `gorm:"type:longtext;column:HeadImgUrl" json:"headImgUrl,omitempty"`
+	SubscribeTime    *time.Time `gorm:"type:datetime(6);column:SubscribeTime" json:"subscribeTime,omitempty"`
+	UnionID          *string    `gorm:"type:longtext;column:UnionId" json:"unionId,omitempty"`
+	Remark           *string    `gorm:"type:longtext;column:Remark" json:"remark,omitempty"`
+	IsConfirmed      bool       `gorm:"type:tinyint(1);column:IsConfirmed" json:"isConfirmed"`
+	GroupID          *int       `gorm:"column:GroupId" json:"groupId,omitempty"`
+	AllowTest        bool       `gorm:"type:tinyint(1);column:AllowTest" json:"allowTest"`
+	IsHidden         bool       `gorm:"type:tinyint(1);column:IsHidden" json:"isHidden"`
+	CurrentEventID   *uuid.UUID `gorm:"type:char(36);column:CurrentEventId" json:"currentEventId,omitempty"`
+	R1               string     `gorm:"type:longtext;column:R1" json:"r1"`
+	R2               string     `gorm:"type:longtext;column:R2" json:"r2"`
+	R3               string     `gorm:"type:longtext;column:R3" json:"r3"`
+	R4               string     `gorm:"type:longtext;column:R4" json:"r4"`
+	R5               string     `gorm:"type:longtext;column:R5" json:"r5"`
+	R6               string     `gorm:"type:longtext;column:R6" json:"r6"`
+	R7               string     `gorm:"type:longtext;column:R7" json:"r7"`
+	R8               string     `gorm:"type:longtext;column:R8" json:"r8"`
+	R9               string     `gorm:"type:longtext;column:R9" json:"r9"`
+	R10              string     `gorm:"type:longtext;column:R10" json:"r10"`
+	PartyNumber      string     `gorm:"type:longtext;column:PartyNumber" json:"party_number"`
+	IsBizCardEnabled bool       `gorm:"type:tinyint(1);column:IsBizCardEnabled;default:0" json:"isBizCardEnabled"`
+	Telephone        *string    `gorm:"type:longtext;column:Telephone" json:"telephone,omitempty"`
+	WorkAddress      *string    `gorm:"type:longtext;column:WorkAddress" json:"workAddress,omitempty"`
+	QrCodeValue      *string    `gorm:"type:longtext;column:QrCodeValue" json:"qrCodeValue,omitempty"`
+	BizCardSavePath  *string    `gorm:"type:longtext;column:BizCardSavePath" json:"bizCardSavePath,omitempty"`
 
 	// Audit fields
-	CreatedAt time.Time  `gorm:"type:datetime(6);column:CreationTime" json:"created_at"`
-	UpdatedAt *time.Time `gorm:"type:datetime(6);column:LastModificationTime" json:"updated_at,omitempty"`
-	IsDeleted bool       `gorm:"type:tinyint(1);column:IsDeleted;default:0" json:"is_deleted"`
+	CreatedAt time.Time  `gorm:"type:datetime(6);column:CreationTime" json:"createdAt"`
+	UpdatedAt *time.Time `gorm:"type:datetime(6);column:LastModificationTime" json:"updatedAt,omitempty"`
+	IsDeleted bool       `gorm:"type:tinyint(1);column:IsDeleted;default:0" json:"-"`
 	DeletedAt *time.Time `gorm:"type:datetime(6);column:DeletionTime" json:"deleted_at,omitempty"`
 	CreatedBy *uuid.UUID `gorm:"type:char(36);column:CreatorId" json:"created_by,omitempty"`
 	UpdatedBy *uuid.UUID `gorm:"type:char(36);column:LastModifierId" json:"updated_by,omitempty"`
@@ -113,7 +113,9 @@ func (w *WeChatUser) BeforeCreate(tx *gorm.DB) error {
 	now := time.Now()
 	w.CreatedAt = now
 	w.UpdatedAt = &now
-	w.SubscribeTime = now
+	if w.SubscribeTime == nil {
+		w.SubscribeTime = &now
+	}
 	return nil
 }
 

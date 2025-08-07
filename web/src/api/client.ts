@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
-  baseURL: '/api/v1', // Force to use our Go backend API
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1', // Force to use our Go backend API
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -15,6 +15,20 @@ apiClient.interceptors.request.use(
   (config) => {
     // Add request timestamp for debugging
     config.metadata = { startTime: new Date() }
+
+    // Add auth token from localStorage if available
+    const authStorage = localStorage.getItem('auth-storage')
+    if (authStorage) {
+      try {
+        const authData = JSON.parse(authStorage)
+        const token = authData.state?.token
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+      } catch (e) {
+        console.warn('Failed to parse auth storage:', e)
+      }
+    }
 
     return config
   },

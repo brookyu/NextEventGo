@@ -328,14 +328,14 @@ const SiteEventsPage: React.FC = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/events/site-events/${event.id}`)}
+                      onClick={() => navigate(`/events/${event.id}`)}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/events/site-events/${event.id}/edit`)}
+                      onClick={() => navigate(`/events/${event.id}/edit`)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>

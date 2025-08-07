@@ -454,3 +454,124 @@ func (c *WeChatAPIClient) UploadMaterial(ctx context.Context, filePath string) (
 
 	return &uploadResp, nil
 }
+
+// QRCodeCreateRequest represents WeChat QR code creation request
+type QRCodeCreateRequest struct {
+	ExpireSeconds int              `json:"expire_seconds,omitempty"`
+	ActionName    string           `json:"action_name"`
+	ActionInfo    QRCodeActionInfo `json:"action_info"`
+}
+
+// QRCodeActionInfo represents QR code action info
+type QRCodeActionInfo struct {
+	Scene QRCodeScene `json:"scene"`
+}
+
+// QRCodeScene represents QR code scene
+type QRCodeScene struct {
+	SceneStr string `json:"scene_str,omitempty"`
+	SceneID  int    `json:"scene_id,omitempty"`
+}
+
+// QRCodeCreateResponse represents WeChat QR code creation response
+type QRCodeCreateResponse struct {
+	Ticket        string `json:"ticket"`
+	ExpireSeconds int    `json:"expire_seconds"`
+	URL           string `json:"url"`
+	ErrCode       int    `json:"errcode"`
+	ErrMsg        string `json:"errmsg"`
+}
+
+// CreateQRCode creates a temporary QR code with expiration
+func (c *WeChatAPIClient) CreateQRCode(ctx context.Context, sceneStr string, expireSeconds int) (*QRCodeCreateResponse, error) {
+	token, err := c.GetAccessToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get access token: %w", err)
+	}
+
+	// Prepare request
+	request := QRCodeCreateRequest{
+		ExpireSeconds: expireSeconds,
+		ActionName:    "QR_STR_SCENE",
+		ActionInfo: QRCodeActionInfo{
+			Scene: QRCodeScene{
+				SceneStr: sceneStr,
+			},
+		},
+	}
+
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal QR code request: %w", err)
+	}
+
+	// Make API call
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=%s", token)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create QR code: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var qrResp QRCodeCreateResponse
+	if err := json.NewDecoder(resp.Body).Decode(&qrResp); err != nil {
+		return nil, fmt.Errorf("failed to decode QR code response: %w", err)
+	}
+
+	if qrResp.ErrCode != 0 {
+		return nil, fmt.Errorf("WeChat QR code creation error: %d - %s", qrResp.ErrCode, qrResp.ErrMsg)
+	}
+
+	c.logger.Info("WeChat QR code created successfully",
+		zap.String("sceneStr", sceneStr),
+		zap.String("ticket", qrResp.Ticket),
+		zap.Int("expireSeconds", qrResp.ExpireSeconds))
+
+	return &qrResp, nil
+}
+
+// CreatePermanentQRCode creates a permanent QR code
+func (c *WeChatAPIClient) CreatePermanentQRCode(ctx context.Context, sceneStr string) (*QRCodeCreateResponse, error) {
+	token, err := c.GetAccessToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get access token: %w", err)
+	}
+
+	// Prepare request for permanent QR code
+	request := QRCodeCreateRequest{
+		ActionName: "QR_LIMIT_STR_SCENE",
+		ActionInfo: QRCodeActionInfo{
+			Scene: QRCodeScene{
+				SceneStr: sceneStr,
+			},
+		},
+	}
+
+	requestBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal permanent QR code request: %w", err)
+	}
+
+	// Make API call
+	url := fmt.Sprintf("https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=%s", token)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create permanent QR code: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var qrResp QRCodeCreateResponse
+	if err := json.NewDecoder(resp.Body).Decode(&qrResp); err != nil {
+		return nil, fmt.Errorf("failed to decode permanent QR code response: %w", err)
+	}
+
+	if qrResp.ErrCode != 0 {
+		return nil, fmt.Errorf("WeChat permanent QR code creation error: %d - %s", qrResp.ErrCode, qrResp.ErrMsg)
+	}
+
+	c.logger.Info("WeChat permanent QR code created successfully",
+		zap.String("sceneStr", sceneStr),
+		zap.String("ticket", qrResp.Ticket))
+
+	return &qrResp, nil
+}

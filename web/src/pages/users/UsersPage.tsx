@@ -23,20 +23,26 @@ import { format, formatDistanceToNow } from 'date-fns'
 import toast from 'react-hot-toast'
 
 import { usersApi } from '@/api/users'
-import type { User, UserFilters } from '@/types/users'
+import type { WeChatUser, WeChatUserFilters } from '@/types/users'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { WeChatUserModal } from '@/components/users'
 
 export default function UsersPage() {
-  const [filters, setFilters] = useState<UserFilters>({
+  const [filters, setFilters] = useState<WeChatUserFilters>({
     search: '',
-    role: 'all',
-    status: 'all',
+    subscribe: undefined,
+    sex: undefined,
+    city: '',
+    province: '',
+    country: '',
     sortBy: 'createdAt',
     sortOrder: 'desc',
   })
   const [showFilters, setShowFilters] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
+  const [showUserModal, setShowUserModal] = useState(false)
+  const [editingUser, setEditingUser] = useState<WeChatUser | undefined>(undefined)
   const pageSize = 20
 
   // WebSocket for real-time updates
@@ -55,10 +61,15 @@ export default function UsersPage() {
         offset: (currentPage - 1) * pageSize,
         limit: pageSize,
         search: filters.search || undefined,
-        role: filters.role !== 'all' ? filters.role : undefined,
-        status: filters.status !== 'all' ? filters.status : undefined,
+        subscribe: filters.subscribe,
+        sex: filters.sex,
+        city: filters.city || undefined,
+        province: filters.province || undefined,
+        country: filters.country || undefined,
         sortBy: filters.sortBy,
         sortOrder: filters.sortOrder,
+        createdAtStart: filters.createdAtStart,
+        createdAtEnd: filters.createdAtEnd,
       }),
     staleTime: 1000 * 60 * 5, // 5 minutes
   })
@@ -79,16 +90,16 @@ export default function UsersPage() {
     setCurrentPage(1)
   }
 
-  const handleFilterChange = (key: keyof UserFilters, value: any) => {
+  const handleFilterChange = (key: keyof WeChatUserFilters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
     setCurrentPage(1)
   }
 
-  const handleSelectUser = (userId: string) => {
+  const handleSelectUser = (openId: string) => {
     setSelectedUsers((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+      prev.includes(openId)
+        ? prev.filter((id) => id !== openId)
+        : [...prev, openId]
     )
   }
 
@@ -96,21 +107,42 @@ export default function UsersPage() {
     if (selectedUsers.length === users.length) {
       setSelectedUsers([])
     } else {
-      setSelectedUsers(users.map((user) => user.id))
+      setSelectedUsers(users.map((user) => user.openId))
     }
   }
 
-  const getStatusColor = (status: User['status']) => {
-    switch (status) {
-      case 'active':
-        return 'badge-success'
-      case 'inactive':
-        return 'badge-gray'
-      case 'suspended':
-        return 'badge-error'
+  const getSubscriptionStatus = (subscribe: boolean) => {
+    return subscribe ? 'Subscribed' : 'Unsubscribed'
+  }
+
+  const getSubscriptionColor = (subscribe: boolean) => {
+    return subscribe ? 'badge-success' : 'badge-gray'
+  }
+
+  const getSexDisplay = (sex: number) => {
+    switch (sex) {
+      case 1:
+        return 'Male'
+      case 2:
+        return 'Female'
       default:
-        return 'badge-gray'
+        return 'Unknown'
     }
+  }
+
+  const handleAddUser = () => {
+    setEditingUser(undefined)
+    setShowUserModal(true)
+  }
+
+  const handleEditUser = (user: WeChatUser) => {
+    setEditingUser(user)
+    setShowUserModal(true)
+  }
+
+  const handleCloseModal = () => {
+    setShowUserModal(false)
+    setEditingUser(undefined)
   }
 
   const getRoleColor = (role: User['role']) => {
@@ -156,9 +188,9 @@ export default function UsersPage() {
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Wechat Users Management</h1>
           <p className="text-gray-600">
-            Manage user accounts, roles, and permissions
+            Manage WeChat user accounts and subscriber information
             {pagination && (
               <span className="ml-2 text-sm">
                 ({pagination.total} total users)
@@ -182,10 +214,10 @@ export default function UsersPage() {
               </button>
             </div>
           )}
-          <Link to="/users/new" className="btn-primary">
+          <button onClick={handleAddUser} className="btn-primary">
             <Plus className="w-4 h-4 mr-2" />
-            Add User
-          </Link>
+            Add Wechat User
+          </button>
         </div>
       </div>
 
@@ -201,7 +233,7 @@ export default function UsersPage() {
             <div className="card-body">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Users</p>
+                  <p className="text-sm font-medium text-gray-600">Total Wechat Users</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-primary-100">
@@ -220,8 +252,8 @@ export default function UsersPage() {
             <div className="card-body">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Users</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.activeUsers}</p>
+                  <p className="text-sm font-medium text-gray-600">Subscribed Users</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.subscribedUsers}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-success-100">
                   <UserCheck className="w-6 h-6 text-success-600" />
@@ -258,8 +290,8 @@ export default function UsersPage() {
             <div className="card-body">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Suspended</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.suspendedUsers}</p>
+                  <p className="text-sm font-medium text-gray-600">Unsubscribed</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.unsubscribedUsers}</p>
                 </div>
                 <div className="p-3 rounded-lg bg-error-100">
                   <AlertTriangle className="w-6 h-6 text-error-600" />
@@ -277,7 +309,7 @@ export default function UsersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder="Search wechat users..."
               value={filters.search}
               onChange={(e) => handleSearch(e.target.value)}
               className="input pl-10"
@@ -305,33 +337,76 @@ export default function UsersPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Role
+                      Subscription
                     </label>
                     <select
-                      value={filters.role}
-                      onChange={(e) => handleFilterChange('role', e.target.value)}
+                      value={filters.subscribe === undefined ? 'all' : filters.subscribe.toString()}
+                      onChange={(e) => {
+                        const value = e.target.value === 'all' ? undefined : e.target.value === 'true'
+                        handleFilterChange('subscribe', value)
+                      }}
                       className="input"
                     >
-                      <option value="all">All Roles</option>
-                      <option value="admin">Admin</option>
-                      <option value="manager">Manager</option>
-                      <option value="user">User</option>
+                      <option value="all">All Users</option>
+                      <option value="true">Subscribed</option>
+                      <option value="false">Unsubscribed</option>
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status
+                      Gender
                     </label>
                     <select
-                      value={filters.status}
-                      onChange={(e) => handleFilterChange('status', e.target.value)}
+                      value={filters.sex === undefined ? 'all' : filters.sex.toString()}
+                      onChange={(e) => {
+                        const value = e.target.value === 'all' ? undefined : parseInt(e.target.value)
+                        handleFilterChange('sex', value)
+                      }}
                       className="input"
                     >
-                      <option value="all">All Status</option>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                      <option value="suspended">Suspended</option>
+                      <option value="all">All Genders</option>
+                      <option value="1">Male</option>
+                      <option value="2">Female</option>
+                      <option value="0">Unknown</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      value={filters.city || ''}
+                      onChange={(e) => handleFilterChange('city', e.target.value)}
+                      placeholder="Filter by city"
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Province
+                    </label>
+                    <input
+                      type="text"
+                      value={filters.province || ''}
+                      onChange={(e) => handleFilterChange('province', e.target.value)}
+                      placeholder="Filter by province"
+                      className="input"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      value={filters.country || ''}
+                      onChange={(e) => handleFilterChange('country', e.target.value)}
+                      placeholder="Filter by country"
+                      className="input"
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -343,10 +418,10 @@ export default function UsersPage() {
                       className="input"
                     >
                       <option value="createdAt">Created Date</option>
-                      <option value="username">Username</option>
-                      <option value="email">Email</option>
-                      <option value="lastLoginAt">Last Login</option>
-                      <option value="loginCount">Login Count</option>
+                      <option value="nickname">Nickname</option>
+                      <option value="realName">Real Name</option>
+                      <option value="companyName">Company</option>
+                      <option value="subscribeTime">Subscribe Time</option>
                     </select>
                   </div>
                   <div>
@@ -391,16 +466,16 @@ export default function UsersPage() {
       ) : users.length === 0 ? (
         <div className="text-center py-12">
           <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No wechat users found</h3>
           <p className="text-gray-600 mb-6">
-            {filters.search || filters.role !== 'all' || filters.status !== 'all'
+            {filters.search || filters.subscribe !== undefined || filters.sex !== undefined
               ? 'Try adjusting your search or filters'
-              : 'Get started by adding your first user'}
+              : 'Get started by adding your first wechat user'}
           </p>
-          <Link to="/users/new" className="btn-primary">
+          <button onClick={handleAddUser} className="btn-primary">
             <Plus className="w-4 h-4 mr-2" />
-            Add User
-          </Link>
+            Add Wechat User
+          </button>
         </div>
       ) : (
         <motion.div
@@ -421,7 +496,7 @@ export default function UsersPage() {
                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded mr-3"
                   />
                   <span className="text-sm font-medium text-primary-900">
-                    {selectedUsers.length} of {users.length} users selected
+                    {selectedUsers.length} of {users.length} wechat users selected
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -450,10 +525,10 @@ export default function UsersPage() {
                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                       />
                     </th>
-                    <th>User</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Last Login</th>
+                    <th>Wechat User</th>
+                    <th>Company</th>
+                    <th>Location</th>
+                    <th>Subscription</th>
                     <th>Created</th>
                     <th className="w-12"></th>
                   </tr>
@@ -461,7 +536,7 @@ export default function UsersPage() {
                 <tbody>
                   {users.map((user, index) => (
                     <motion.tr
-                      key={user.id}
+                      key={user.openId}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
@@ -470,67 +545,71 @@ export default function UsersPage() {
                       <td>
                         <input
                           type="checkbox"
-                          checked={selectedUsers.includes(user.id)}
-                          onChange={() => handleSelectUser(user.id)}
+                          checked={selectedUsers.includes(user.openId)}
+                          onChange={() => handleSelectUser(user.openId)}
                           className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                         />
                       </td>
                       <td>
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                            {user.avatar ? (
+                            {user.headImgUrl ? (
                               <img
-                                src={user.avatar}
-                                alt={user.username}
+                                src={user.headImgUrl}
+                                alt={user.nickname}
                                 className="w-10 h-10 rounded-full"
                               />
                             ) : (
                               <span className="text-primary-600 font-medium">
-                                {user.firstName?.[0] || user.username[0].toUpperCase()}
+                                {user.nickname?.[0]?.toUpperCase() || 'U'}
                               </span>
                             )}
                           </div>
                           <div>
                             <div className="flex items-center">
-                              <p className="font-medium text-gray-900">{user.username}</p>
-                              {!user.isEmailVerified && (
-                                <Mail className="w-4 h-4 text-warning-500 ml-2" title="Email not verified" />
-                              )}
-                              {user.isTwoFactorEnabled && (
-                                <Shield className="w-4 h-4 text-success-500 ml-1" title="2FA enabled" />
-                              )}
+                              <p className="font-medium text-gray-900">{user.nickname}</p>
+                              <span className="ml-2 text-xs text-gray-400">({getSexDisplay(user.sex)})</span>
                             </div>
-                            <p className="text-sm text-gray-500">{user.email}</p>
-                            {user.firstName && user.lastName && (
-                              <p className="text-xs text-gray-400">{user.firstName} {user.lastName}</p>
+                            {user.realName && (
+                              <p className="text-sm text-gray-500">{user.realName}</p>
+                            )}
+                            {user.email && (
+                              <p className="text-xs text-gray-400">{user.email}</p>
                             )}
                           </div>
                         </div>
                       </td>
                       <td>
-                        <span className={`badge ${getRoleColor(user.role)}`}>
-                          {user.role}
-                        </span>
+                        <div>
+                          {user.companyName && (
+                            <p className="font-medium text-gray-900">{user.companyName}</p>
+                          )}
+                          {user.position && (
+                            <p className="text-sm text-gray-500">{user.position}</p>
+                          )}
+                          {!user.companyName && !user.position && (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
                       </td>
                       <td>
-                        <span className={`badge ${getStatusColor(user.status)} flex items-center`}>
-                          {getStatusIcon(user.status)}
-                          <span className="ml-1">{user.status}</span>
-                        </span>
+                        <div>
+                          {user.city && user.province && (
+                            <p className="text-sm text-gray-900">{user.city}, {user.province}</p>
+                          )}
+                          {user.country && (
+                            <p className="text-xs text-gray-500">{user.country}</p>
+                          )}
+                          {!user.city && !user.province && !user.country && (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
                       </td>
                       <td>
-                        {user.lastLoginAt ? (
-                          <div>
-                            <p className="text-sm text-gray-900">
-                              {formatDistanceToNow(new Date(user.lastLoginAt))} ago
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {format(new Date(user.lastLoginAt), 'MMM d, yyyy HH:mm')}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">Never</span>
-                        )}
+                        <span className={`badge ${getSubscriptionColor(user.subscribe)} flex items-center`}>
+                          {user.subscribe ? <UserCheck className="w-3 h-3 mr-1" /> : <UserX className="w-3 h-3 mr-1" />}
+                          <span className="ml-1">{getSubscriptionStatus(user.subscribe)}</span>
+                        </span>
                       </td>
                       <td>
                         <div>
@@ -540,12 +619,31 @@ export default function UsersPage() {
                           <p className="text-xs text-gray-500">
                             {formatDistanceToNow(new Date(user.createdAt))} ago
                           </p>
+                          {user.subscribeTime && (
+                            <p className="text-xs text-gray-400">
+                              Subscribed: {format(new Date(user.subscribeTime), 'MMM d, yyyy')}
+                            </p>
+                          )}
                         </div>
                       </td>
                       <td>
-                        <div className="relative">
-                          <button className="p-1 rounded hover:bg-gray-100">
-                            <MoreVertical className="w-4 h-4 text-gray-400" />
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleEditUser(user)}
+                            className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-primary-600"
+                            title="Edit user"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              // TODO: Add delete functionality
+                              toast.error('Delete functionality not implemented yet')
+                            }}
+                            className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-red-600"
+                            title="Delete user"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -564,7 +662,7 @@ export default function UsersPage() {
           <div className="text-sm text-gray-700">
             Showing {pagination.offset + 1} to{' '}
             {Math.min(pagination.offset + pagination.limit, pagination.total)} of{' '}
-            {pagination.total} users
+            {pagination.total} wechat users
           </div>
           <div className="flex items-center space-x-2">
             <button
@@ -587,6 +685,13 @@ export default function UsersPage() {
           </div>
         </div>
       )}
+
+      {/* WeChat User Modal */}
+      <WeChatUserModal
+        isOpen={showUserModal}
+        onClose={handleCloseModal}
+        user={editingUser}
+      />
     </div>
   )
 }
